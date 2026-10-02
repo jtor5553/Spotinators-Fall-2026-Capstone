@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spot Cone Placement System</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">Manual mode</p>
+      <h1>Spot Cone Placement System</h1>
+    </div>
+    <div class="state-pill" id="state-pill">BOOTING</div>
+  </header>
+
+  <p class="banner hidden" id="estop-banner">EMERGENCY STOP ACTIVE</p>
+  <p class="banner warning hidden" id="warning-banner"></p>
+  <p class="status-line" id="message-line"></p>
+
+  <section id="connect-screen" class="connect-screen">
+    <div class="panel connect-card">
+      <h2>Spot connection</h2>
+      <label for="robot-ip">Robot IP</label>
+      <input id="robot-ip" type="text" inputmode="decimal" autocomplete="off">
+      <label for="username">Username</label>
+      <input id="username" type="text" autocomplete="off">
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="off">
+      <label class="check"><input id="remember" type="checkbox"> Remember IP and username on this Jetson</label>
+      <button id="connect-button" class="action" type="button">Connect to Spot</button>
+      <button id="practice-button" class="secondary" type="button">Practice without Spot</button>
+      <p class="connect-status">Status: <strong id="connect-status">NOT CONNECTED</strong></p>
+    </div>
+  </section>
+
+  <main id="main-screen" class="main hidden">
+    <section class="ops">
+      <article class="panel">
+        <h2>Robot</h2>
+        <p><span class="dot" id="spot-dot"></span> <span id="spot-connection">Not connected</span></p>
+        <p>Battery <strong id="spot-battery">--</strong></p>
+        <p id="spot-posture">Unknown</p>
+        <p>Motors <strong id="spot-motors">--</strong></p>
+        <p class="fine" id="spot-speed"></p>
+      </article>
+      <article class="panel camera-panel">
+        <h2>Camera</h2>
+        <img id="camera-image" alt="Selected Spot camera" width="640" height="480">
+        <div id="camera-buttons" class="camera-buttons"></div>
+      </article>
+      <article class="panel">
+        <h2>Controller</h2>
+        <p><span class="dot" id="pad-dot"></span> <span id="pad-connection">Not connected</span></p>
+        <p>R2: <strong id="pad-r2">Released</strong></p>
+        <p>Left stick X <strong id="left-x">0.00</strong> Y <strong id="left-y">0.00</strong></p>
+        <p>Right stick X <strong id="right-x">0.00</strong> Y <strong id="right-y">0.00</strong></p>
+        <p>X: <strong id="button-x">Released</strong></p>
+        <button id="bluetooth-button" class="secondary" type="button">Search paired</button>
+        <pre id="bluetooth-list" class="fine"></pre>
+      </article>
+      <article class="panel">
+        <h2>Cone dispenser</h2>
+        <p><span class="dot" id="cone-dot"></span> <strong id="dispenser-state">DISABLED</strong></p>
+        <p>Cones remaining: <strong id="cone-count">4</strong></p>
+        <div class="row">
+          <button id="cone-minus" class="secondary" type="button">-</button>
+          <button id="cone-reset" class="secondary" type="button">Reset to 4</button>
+          <button id="cone-plus" class="secondary" type="button">+</button>
+        </div>
+        <button id="drop-cone" class="action" type="button">Hold to drop cone</button>
+        <p class="fine" id="drop-progress"></p>
+        <div class="row">
+          <button id="cone-reverse" class="secondary" type="button">Reverse 0.5s</button>
+          <button id="cone-home" class="secondary" type="button">Home</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="commands">
+      <button id="stand-button" class="action" type="button">Stand</button>
+      <button id="sit-button" class="action" type="button">Sit</button>
+      <button id="stop-button" class="stop" type="button">Stop</button>
+      <button id="arm-button" class="action" type="button">Enable driving</button>
+      <button id="resume-button" class="action" type="button">Resume</button>
+      <button id="disconnect-button" class="secondary" type="button">Disconnect</button>
+      <button id="reset-estop" class="action hidden" type="button">Reset E-stop</button>
+      <button id="estop-button" class="estop" type="button">Emergency stop</button>
+    </section>
+
+    <section class="panel log-panel">
+      <h2>System log</h2>
+      <ol id="log-list"></ol>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

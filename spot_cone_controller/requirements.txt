@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+PyYAML
+pytest
+
+# Install these on the Jetson only when that hardware phase begins.
+# They are not required for mock mode:
+#   python3 -m pip install bosdyn-client
+#   sudo apt-get install python3-evdev
+# Jetson.GPIO is provided by JetPack when the motor pins are configured.

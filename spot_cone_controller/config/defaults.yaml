@@ -1,0 +1,55 @@
+system:
+  name: "Spot Cone Placement Controller"
+  version: "1.0.0"
+  mock_mode: true
+  operator_file: "config/operator.yaml"
+
+spot:
+  hostname: ""
+  username: ""
+
+controller:
+  type: "dualsense"
+  mock: true
+  deadman_trigger: "R2"
+  deadzone: 0.12
+  r2_threshold: 0.2
+  cone_hold_sec: 0.5
+
+movement:
+  max_forward_speed: 0.3
+  max_lateral_speed: 0.2
+  max_rotation_speed: 0.3
+  command_duration_sec: 0.4
+  watchdog_timeout_sec: 1.0
+
+dispenser:
+  enabled: false
+  mock: true
+  cone_capacity: 4
+  motor_driver: "cytron_mdd10a"
+  dir_pin: null
+  pwm_pin: null
+  motor_duty_percent: 60
+  motor_timeout_sec: 3.0
+  drop_duration_sec: 1.5
+  reverse_duration_sec: 0.5
+  home_duration_sec: 1.5
+  limit_switches_enabled: false
+  home_switch_pin: null
+  end_switch_pin: null
+
+camera:
+  width: 640
+  height: 480
+  fps: 5
+
+network:
+  gui_host: "0.0.0.0"
+  gui_port: 8000
+
+logging:
+  directory: "logs"
+  max_bytes: 1000000
+  backup_count: 5
+  to_console: true

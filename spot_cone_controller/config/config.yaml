@@ -1,0 +1,33 @@
+# Operator settings. Do not put the Spot password in this file.
+# The password is entered on the tablet and kept in memory only.
+
+system:
+  name: "Spot Cone Placement Controller"
+  mock_mode: true
+
+spot:
+  hostname: ""
+  username: ""
+
+controller:
+  type: "dualsense"
+  deadman_trigger: "R2"
+
+dispenser:
+  enabled: false
+  cone_capacity: 4
+  motor_driver: "cytron_mdd10a"
+
+camera:
+  width: 640
+  height: 480
+  fps: 5
+
+network:
+  gui_host: "0.0.0.0"
+  gui_port: 8000
+
+movement:
+  max_forward_speed: 0.3
+  max_lateral_speed: 0.2
+  max_rotation_speed: 0.3

@@ -1,0 +1,8 @@
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+logs/
+*.log
+config/operator.yaml
+.DS_Store

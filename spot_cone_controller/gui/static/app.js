@@ -1,0 +1,232 @@
+(function () {
+  var statusUrl = "/api/status";
+  var latest = null;
+  var cameraTimer = null;
+  var holdTimer = null;
+  var sourceKey = "";
+
+  function byId(id) {
+    return document.getElementById(id);
+  }
+
+  function post(url, body) {
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {})
+    }).then(function (response) {
+      return response.json();
+    }).then(function (payload) {
+      if (payload && payload.message) {
+        byId("message-line").textContent = payload.message;
+      }
+      refresh();
+    }).catch(function () {
+      byId("message-line").textContent = "The Jetson did not answer. The robot program is still the controller.";
+    });
+  }
+
+  function refresh() {
+    fetch(statusUrl, { cache: "no-store" })
+      .then(function (response) { return response.json(); })
+      .then(render)
+      .catch(function () {
+        byId("message-line").textContent = "Waiting for the Jetson controller.";
+      });
+  }
+
+  function render(status) {
+    latest = status;
+    var connected = status.spot.connection === "CONNECTED";
+    byId("connect-screen").classList.toggle("hidden", connected);
+    if (connected) {
+      byId("main-screen").classList.remove("hidden");
+    }
+    byId("state-pill").textContent = status.state;
+    byId("connect-status").textContent = status.spot.connection;
+    byId("estop-banner").classList.toggle("hidden", !status.estop_active);
+    byId("warning-banner").classList.toggle("hidden", !status.warning);
+    byId("warning-banner").textContent = status.warning || "";
+    if (!byId("robot-ip").value && status.saved_hostname) {
+      byId("robot-ip").value = status.saved_hostname;
+    }
+    if (!byId("username").value && status.saved_username) {
+      byId("username").value = status.saved_username;
+    }
+    renderSpot(status);
+    renderPad(status);
+    renderDispenser(status);
+    renderCommands(status);
+    renderCameras(status);
+    renderLog(status);
+  }
+
+  function renderSpot(status) {
+    var spot = status.spot;
+    byId("spot-connection").textContent = spot.connection === "CONNECTED" ? "Connected" : "Not connected";
+    setDot("spot-dot", spot.connection === "CONNECTED");
+    byId("spot-battery").textContent = spot.battery === null || spot.battery === undefined ? "--" : spot.battery + "%";
+    byId("spot-posture").textContent = spot.robot_state || "Unknown";
+    byId("spot-motors").textContent = spot.motors || "--";
+    var velocity = spot.velocity || [0, 0, 0];
+    byId("spot-speed").textContent = "Velocity " + velocity.map(formatNum).join(", ");
+  }
+
+  function renderPad(status) {
+    var pad = status.controller;
+    byId("pad-connection").textContent = pad.connected ? "PS5 connected" : "Not connected";
+    setDot("pad-dot", pad.connected);
+    byId("pad-r2").textContent = pad.r2_held ? "Held " + Math.round(pad.r2 * 100) + "%" : "Released";
+    byId("left-x").textContent = formatNum(pad.left.x);
+    byId("left-y").textContent = formatNum(pad.left.y);
+    byId("right-x").textContent = formatNum(pad.right.x);
+    byId("right-y").textContent = formatNum(pad.right.y);
+    byId("button-x").textContent = pad.buttons.x ? "Held" : "Released";
+  }
+
+  function renderDispenser(status) {
+    var dispenser = status.dispenser;
+    byId("dispenser-state").textContent = dispenser.state;
+    byId("cone-count").textContent = dispenser.cones_remaining;
+    byId("cone-reset").textContent = "Reset to " + dispenser.capacity;
+    var progress = Math.round((status.drop_hold_progress || 0) * 100);
+    byId("drop-progress").textContent = progress ? "Hold progress " + progress + "%" : "";
+    setDot("cone-dot", dispenser.state === "READY", dispenser.state === "FAULT" || dispenser.state === "DISABLED");
+  }
+
+  function renderCommands(status) {
+    var commands = status.commands;
+    byId("stand-button").disabled = !commands.stand;
+    byId("sit-button").disabled = !commands.sit;
+    byId("arm-button").disabled = !commands.arm;
+    byId("resume-button").disabled = !commands.resume;
+    byId("drop-cone").disabled = !commands.drop;
+    byId("cone-minus").disabled = !commands.adjust_cones;
+    byId("cone-plus").disabled = !commands.adjust_cones;
+    byId("cone-reset").disabled = !commands.adjust_cones;
+    byId("reset-estop").classList.toggle("hidden", !commands.reset_estop);
+    byId("arm-button").classList.toggle("hidden", !commands.arm);
+    byId("resume-button").classList.toggle("hidden", !commands.resume);
+  }
+
+  function renderCameras(status) {
+    var sources = status.camera.sources || [];
+    var key = sources.join("|") + ":" + status.camera.selected;
+    if (key !== sourceKey) {
+      sourceKey = key;
+      var box = byId("camera-buttons");
+      box.innerHTML = "";
+      sources.forEach(function (name) {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.textContent = name;
+        button.className = name === status.camera.selected ? "action" : "secondary";
+        button.addEventListener("click", function () {
+          post("/api/cameras/select", { name: name });
+        });
+        box.appendChild(button);
+      });
+    }
+    scheduleCamera(status);
+  }
+
+  function scheduleCamera(status) {
+    if (cameraTimer) {
+      clearInterval(cameraTimer);
+      cameraTimer = null;
+    }
+    if (!status.camera.selected) {
+      return;
+    }
+    var fps = status.camera.fps || 5;
+    var image = byId("camera-image");
+    function load() {
+      image.src = "/api/camera/frame?t=" + Date.now();
+    }
+    load();
+    cameraTimer = setInterval(load, Math.max(100, Math.round(1000 / fps)));
+  }
+
+  function renderLog(status) {
+    var list = byId("log-list");
+    list.innerHTML = "";
+    (status.log || []).forEach(function (entry) {
+      var item = document.createElement("li");
+      item.textContent = entry.time + " " + entry.message;
+      list.appendChild(item);
+    });
+  }
+
+  function setDot(id, good, bad) {
+    var dot = byId(id);
+    dot.className = "dot " + (bad ? "off" : good ? "on" : "warn");
+  }
+
+  function formatNum(value) {
+    var number = Number(value || 0);
+    return number.toFixed(2);
+  }
+
+  function bindHold(id) {
+    var button = byId(id);
+    function send(pressed) {
+      fetch("/api/cone/hold", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pressed: pressed })
+      }).catch(function () {});
+    }
+    function start(event) {
+      event.preventDefault();
+      send(true);
+      holdTimer = setInterval(function () { send(true); }, 100);
+    }
+    function end() {
+      clearInterval(holdTimer);
+      send(false);
+    }
+    button.addEventListener("pointerdown", start);
+    button.addEventListener("pointerup", end);
+    button.addEventListener("pointerleave", end);
+    button.addEventListener("pointercancel", end);
+    button.addEventListener("contextmenu", function (event) { event.preventDefault(); });
+  }
+
+  byId("connect-button").addEventListener("click", function () {
+    post("/api/connect", {
+      hostname: byId("robot-ip").value,
+      username: byId("username").value,
+      password: byId("password").value,
+      remember: byId("remember").checked
+    });
+    byId("password").value = "";
+  });
+  byId("practice-button").addEventListener("click", function () {
+    byId("main-screen").classList.remove("hidden");
+  });
+  byId("stand-button").addEventListener("click", function () { post("/api/stand"); });
+  byId("sit-button").addEventListener("click", function () { post("/api/sit"); });
+  byId("stop-button").addEventListener("click", function () { post("/api/stop"); });
+  byId("estop-button").addEventListener("click", function () { post("/api/estop"); });
+  byId("reset-estop").addEventListener("click", function () { post("/api/estop/reset"); });
+  byId("arm-button").addEventListener("click", function () { post("/api/arm"); });
+  byId("resume-button").addEventListener("click", function () { post("/api/resume"); });
+  byId("disconnect-button").addEventListener("click", function () { post("/api/disconnect"); });
+  byId("cone-minus").addEventListener("click", function () { post("/api/cone/adjust", { delta: -1 }); });
+  byId("cone-plus").addEventListener("click", function () { post("/api/cone/adjust", { delta: 1 }); });
+  byId("cone-reset").addEventListener("click", function () { post("/api/cone/reset"); });
+  byId("cone-reverse").addEventListener("click", function () { post("/api/cone/reverse"); });
+  byId("cone-home").addEventListener("click", function () { post("/api/cone/home"); });
+  byId("bluetooth-button").addEventListener("click", function () {
+    fetch("/api/bluetooth").then(function (response) { return response.json(); }).then(function (payload) {
+      var lines = [payload.message || ""];
+      (payload.devices || []).forEach(function (device) {
+        lines.push(device.name + " " + device.address);
+      });
+      byId("bluetooth-list").textContent = lines.join("\n");
+    });
+  });
+  bindHold("drop-cone");
+  refresh();
+  setInterval(refresh, 500);
+})();

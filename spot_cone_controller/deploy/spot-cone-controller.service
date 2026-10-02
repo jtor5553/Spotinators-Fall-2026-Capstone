@@ -1,0 +1,19 @@
+[Unit]
+Description=Spot Cone Placement Controller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Replace this user and the paths before installing.
+User=REPLACE_WITH_JETSON_USERNAME
+WorkingDirectory=/home/REPLACE_WITH_JETSON_USERNAME/spot_cone_controller
+ExecStart=/usr/bin/python3 /home/REPLACE_WITH_JETSON_USERNAME/spot_cone_controller/main.py
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=20
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
