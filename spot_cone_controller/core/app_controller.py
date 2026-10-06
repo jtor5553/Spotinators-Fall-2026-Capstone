@@ -1,11 +1,13 @@
 """Central controller. Spot, the gamepad, the motor, and the GUI all come through here."""
 
+import sys
 import threading
 import time
 
 from autonomy.manager import AutonomyManager
 from controller.dualsense import DualSenseController, paired_controllers
 from controller.mappings import command_from_sticks
+from controller.xinput_pad import XInputController
 from core.config import save_operator_identity
 from core.events import EventLog
 from core.exceptions import SpotConnectionError
@@ -16,7 +18,7 @@ from mocks.mock_controller import MockController
 from mocks.mock_spot import MockSpot
 from safety.safety_manager import SafetyManager
 from safety.watchdog import Watchdog
-from spot.cameras import encode_solid_png
+from spot.cameras import encode_solid_png, prefer_visual_source, visual_sources
 from spot.connection import SpotSession
 
 
@@ -52,7 +54,7 @@ class AppController:
         self._gui_drop = HoldToDrop(hold)
         self._gui_hold = False
         self._gui_hold_at = 0.0
-        self._prev_buttons = {"triangle": False, "circle": False, "options": False}
+        self._prev_buttons = {"lb": False, "rb": False, "options": False}
         self._controller_was_connected = False
         self._controller_loss_handled = False
         self._spot_loss_handled = False
@@ -135,13 +137,13 @@ class AppController:
     def connect_spot(self, hostname, username, password, remember=False):
         with self._lock:
             hostname = (hostname or "").strip()
-            username = (username or "").strip()
+            username = (username or "").strip() or "user2"
             if self.state == SystemState.ESTOP:
                 return False, "Reset the E-stop before connecting."
             if not hostname:
                 return False, "Robot IP is required."
-            if not self.config["system"].get("mock_mode", True) and (not username or not password):
-                return False, "Username and password are required."
+            if not self.config["system"].get("mock_mode", True) and not password:
+                return False, "Password is required."
             self.events.add("SPOT CONNECTION ATTEMPT")
             try:
                 self.spot.connect(hostname, username, password)
@@ -156,8 +158,8 @@ class AppController:
             self.warning = ""
             self._spot_cache = self.spot.status()
             self.events.add("SPOT CONNECTED")
-            sources = self.spot.list_cameras()
-            self.selected_camera = sources[0] if sources else None
+            sources = visual_sources(self.spot.list_cameras())
+            self.selected_camera = prefer_visual_source(sources)
             if remember:
                 save_operator_identity(self.config, hostname, username)
             return True, "Connected."
@@ -280,7 +282,7 @@ class AppController:
 
     def select_camera(self, name):
         with self._lock:
-            sources = self.spot.list_cameras()
+            sources = visual_sources(self.spot.list_cameras())
             if name not in sources:
                 self.last_error = "That camera was not reported by Spot."
                 return False, self.last_error
@@ -327,7 +329,7 @@ class AppController:
                 "controller": pad,
                 "dispenser": self.dispenser.status(),
                 "camera": {
-                    "sources": self.spot.list_cameras(),
+                    "sources": visual_sources(self.spot.list_cameras()),
                     "selected": self.selected_camera,
                     "fps": int(self.config["camera"].get("fps", 5)),
                     "ok": self.camera_ok,
@@ -393,7 +395,20 @@ class AppController:
             self._handle_spot_lost(str(exc))
             return
         if self._spot_cache.get("estop") and not self.safety.estop_latched:
-            self._enter_estop_locked("SPOT REPORTED ESTOP")
+            names = self._spot_cache.get("estop_names") or []
+            if names == ["software_estop"]:
+                self._release_software_estop_locked()
+            else:
+                self._enter_estop_locked("SPOT REPORTED ESTOP")
+
+    def _release_software_estop_locked(self):
+        release = getattr(self.spot, "release_software_estop", None)
+        if release is None:
+            return
+        try:
+            release()
+        except Exception:
+            self._log_exception("software estop release failed")
 
     def _apply_motor_timeout(self):
         if self.watchdog.motor_timeout_latched:
@@ -415,21 +430,24 @@ class AppController:
     def _handle_buttons(self, pad):
         buttons = pad["buttons"]
         if not pad["connected"]:
-            self._prev_buttons = {"triangle": False, "circle": False, "options": False}
+            self._prev_buttons = {"lb": False, "rb": False, "options": False}
             return
         if buttons["options"] and not self._prev_buttons["options"]:
             self._normal_stop_locked("NORMAL STOP")
-        if buttons["triangle"] and not self._prev_buttons["triangle"]:
+        if buttons["rb"] and not self._prev_buttons["rb"]:
             self._stand_locked()
-        if buttons["circle"] and not self._prev_buttons["circle"]:
+        if buttons["lb"] and not self._prev_buttons["lb"]:
             self._sit_locked()
         self._prev_buttons = {
-            "triangle": buttons["triangle"],
-            "circle": buttons["circle"],
+            "lb": buttons["lb"],
+            "rb": buttons["rb"],
             "options": buttons["options"],
         }
 
     def _apply_motion(self, pad, now):
+        if getattr(self.spot, "posture", "") == "SITTING":
+            self.watchdog.clear_motion()
+            return
         movement = self.config["movement"]
         controller = self.config["controller"]
         allowed = self.safety.motion_allowed and pad["connected"] and self.state in (
@@ -446,10 +464,9 @@ class AppController:
         command = command_from_sticks(
             (pad["left"]["x"], pad["left"]["y"]),
             (pad["right"]["x"], pad["right"]["y"]),
-            pad["r2"],
             movement,
             controller.get("deadzone", 0.12),
-            controller.get("r2_threshold", 0.2),
+            pad["r2"],
         )
         if command == (0.0, 0.0, 0.0):
             if self.watchdog.motion_active or any(self.spot.velocity):
@@ -535,7 +552,6 @@ class AppController:
             self.last_error = f"Sit failed: {exc}"
             self.events.add("SIT FAILED")
             return False, self.last_error
-        self.spot.stop()
         self.watchdog.clear_motion()
         self._spot_cache = self.spot.status()
         self.events.add("SIT COMMAND")
@@ -694,6 +710,8 @@ class AppController:
     def _build_gamepad(self):
         if self.config["controller"].get("mock", True):
             return MockController()
+        if sys.platform == "win32":
+            return XInputController()
         return DualSenseController()
 
     def _log_exception(self, message):

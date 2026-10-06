@@ -25,10 +25,10 @@
       <label for="robot-ip">Robot IP</label>
       <input id="robot-ip" type="text" inputmode="decimal" autocomplete="off">
       <label for="username">Username</label>
-      <input id="username" type="text" autocomplete="off">
+      <input id="username" type="text" autocomplete="off" value="user2">
       <label for="password">Password</label>
       <input id="password" type="password" autocomplete="off">
-      <label class="check"><input id="remember" type="checkbox"> Remember IP and username on this Jetson</label>
+      <label class="check"><input id="remember" type="checkbox"> Remember IP and username on this computer</label>
       <button id="connect-button" class="action" type="button">Connect to Spot</button>
       <button id="practice-button" class="secondary" type="button">Practice without Spot</button>
       <p class="connect-status">Status: <strong id="connect-status">NOT CONNECTED</strong></p>
@@ -53,7 +53,7 @@
       <article class="panel">
         <h2>Controller</h2>
         <p><span class="dot" id="pad-dot"></span> <span id="pad-connection">Not connected</span></p>
-        <p>R2: <strong id="pad-r2">Released</strong></p>
+        <p>Boost: <strong id="pad-r2">Released</strong></p>
         <p>Left stick X <strong id="left-x">0.00</strong> Y <strong id="left-y">0.00</strong></p>
         <p>Right stick X <strong id="right-x">0.00</strong> Y <strong id="right-y">0.00</strong></p>
         <p>X: <strong id="button-x">Released</strong></p>
@@ -87,6 +87,43 @@
       <button id="disconnect-button" class="secondary" type="button">Disconnect</button>
       <button id="reset-estop" class="action hidden" type="button">Reset E-stop</button>
       <button id="estop-button" class="estop" type="button">Emergency stop</button>
+    </section>
+
+    <section class="panel controls-help">
+      <details>
+        <summary>Controller buttons</summary>
+        <p class="fine">After Stand, press Enable driving on this page. The sticks do nothing until then.</p>
+        <div class="pad-guides">
+          <div>
+            <h3>Xbox</h3>
+            <table>
+              <tbody>
+                <tr><th>Left stick</th><td>Walk. Speed follows how far you push it.</td></tr>
+                <tr><th>Right stick</th><td>Turn.</td></tr>
+                <tr><th>Right trigger</th><td>Hold to go faster.</td></tr>
+                <tr><th>Left bumper</th><td>Sit.</td></tr>
+                <tr><th>Right bumper</th><td>Stand.</td></tr>
+                <tr><th>A</th><td>Hold for half a second to drop one cone.</td></tr>
+                <tr><th>Start</th><td>Stop.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h3>PS5</h3>
+            <table>
+              <tbody>
+                <tr><th>Left stick</th><td>Walk. Speed follows how far you push it.</td></tr>
+                <tr><th>Right stick</th><td>Turn.</td></tr>
+                <tr><th>R2</th><td>Hold to go faster.</td></tr>
+                <tr><th>L1</th><td>Sit.</td></tr>
+                <tr><th>R1</th><td>Stand.</td></tr>
+                <tr><th>Cross</th><td>Hold for half a second to drop one cone.</td></tr>
+                <tr><th>Options</th><td>Stop.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
     </section>
 
     <section class="panel log-panel">

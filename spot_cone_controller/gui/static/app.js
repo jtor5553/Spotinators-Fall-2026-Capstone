@@ -50,7 +50,7 @@
     if (!byId("robot-ip").value && status.saved_hostname) {
       byId("robot-ip").value = status.saved_hostname;
     }
-    if (!byId("username").value && status.saved_username) {
+    if (status.saved_username && byId("username").value === "user2") {
       byId("username").value = status.saved_username;
     }
     renderSpot(status);
@@ -74,7 +74,8 @@
 
   function renderPad(status) {
     var pad = status.controller;
-    byId("pad-connection").textContent = pad.connected ? "PS5 connected" : "Not connected";
+    var label = pad.message || (pad.connected ? "Connected" : "Not connected");
+    byId("pad-connection").textContent = label;
     setDot("pad-dot", pad.connected);
     byId("pad-r2").textContent = pad.r2_held ? "Held " + Math.round(pad.r2 * 100) + "%" : "Released";
     byId("left-x").textContent = formatNum(pad.left.x);

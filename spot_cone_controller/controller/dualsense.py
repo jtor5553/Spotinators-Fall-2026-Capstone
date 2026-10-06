@@ -128,6 +128,8 @@ class DualSenseController:
                 codes.BTN_SOUTH: "x",
                 codes.BTN_EAST: "circle",
                 codes.BTN_NORTH: "triangle",
+                codes.BTN_TL: "lb",
+                codes.BTN_TR: "rb",
                 codes.BTN_START: "options",
             }.get(event.code)
             if name:

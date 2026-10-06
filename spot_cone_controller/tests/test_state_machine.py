@@ -4,6 +4,33 @@ from gui.server import create_app
 from tests.conftest import make_controller
 
 
+def test_real_connect_uses_default_username(tmp_path):
+    app = make_controller(tmp_path)
+    app.config["system"]["mock_mode"] = False
+    seen = {}
+
+    class FakeSpot:
+        def connect(self, hostname, username, password):
+            del hostname
+            seen["username"] = username
+            seen["password"] = password
+            return True
+
+        def status(self):
+            return {"connection": "CONNECTED"}
+
+        def list_cameras(self):
+            return []
+
+    app.spot = FakeSpot()
+    refused, message = app.connect_spot("10.0.0.5", "", "")
+    assert refused is False
+    assert message == "Password is required."
+    ok, _message = app.connect_spot("10.0.0.5", "", "secret")
+    assert ok is True
+    assert seen == {"username": "user2", "password": "secret"}
+
+
 def test_startup_is_safe(tmp_path):
     app = make_controller(tmp_path, dispenser_enabled=False)
     app.startup()

@@ -167,9 +167,52 @@ button:disabled { opacity: 0.4; }
 
 .fine { color: var(--muted); font-size: 16px; white-space: pre-wrap; }
 
+.controls-help summary {
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.controls-help summary:focus {
+  outline: 2px solid var(--warn);
+  outline-offset: 4px;
+}
+
+.controls-help details[open] summary { margin-bottom: 12px; }
+
+.pad-guides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.controls-help h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.controls-help table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.controls-help th,
+.controls-help td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.controls-help th { width: 34%; }
+
 #drop-cone { width: 100%; margin: 8px 0; }
 
 @media (max-width: 900px) {
   .ops { grid-template-columns: 1fr; }
+  .pad-guides { grid-template-columns: 1fr; }
   h1 { font-size: 26px; }
 }

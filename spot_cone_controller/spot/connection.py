@@ -38,7 +38,7 @@ class SpotSession:
         except ImportError as exc:
             raise SpotConnectionError(
                 "The Boston Dynamics Python SDK is not installed. "
-                "Install bosdyn-client on the Jetson before using real Spot mode."
+                "Install bosdyn-client before using real Spot mode."
             ) from exc
         sdk = bosdyn.client.create_standard_sdk("SpotConeController")
         robot = sdk.create_robot(hostname)
@@ -50,6 +50,7 @@ class SpotSession:
         camera_cfg = self.config["camera"]
         self.cameras = SpotCameras(image_client, camera_cfg["width"], camera_cfg["height"])
         self.connected = True
+        self.release_software_estop()
         self.refresh_status()
         try:
             self._camera_names = self.cameras.list_sources()
@@ -116,10 +117,10 @@ class SpotSession:
         self.prepare_for_motion()
         from spot.movement import sit as command_sit
 
-        command_sit(self.command_client)
         self.commanded_posture = "SITTING"
         self.posture = "SITTING"
         self.velocity = (0.0, 0.0, 0.0)
+        command_sit(self.command_client)
 
     def set_velocity(self, forward, lateral, rotation, duration_sec=0.4):
         if not self.prepared or self.command_client is None:
@@ -135,7 +136,7 @@ class SpotSession:
 
     def stop(self):
         self.velocity = (0.0, 0.0, 0.0)
-        if self.command_client is None:
+        if self.command_client is None or self.posture == "SITTING":
             return
         try:
             from spot.movement import send_velocity
@@ -149,6 +150,15 @@ class SpotSession:
         self.estop.stop()
 
     def software_estop_reset(self):
+        self.release_software_estop()
+
+    def release_software_estop(self):
+        """Register this program's endpoint and allow motion.
+
+        Spot reports software_estop until some endpoint is checking in.
+        """
+        if self.robot is not None:
+            self.estop.setup(self.robot)
         self.estop.allow()
 
     def list_cameras(self):

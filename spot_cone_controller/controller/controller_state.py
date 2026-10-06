@@ -15,6 +15,8 @@ class ControllerState:
             "triangle": False,
             "circle": False,
             "options": False,
+            "lb": False,
+            "rb": False,
         }
         self.message = ""
 

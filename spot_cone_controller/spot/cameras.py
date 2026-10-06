@@ -53,15 +53,42 @@ class SpotCameras:
         from bosdyn.api import image_pb2
         from bosdyn.client.image import build_image_request
 
-        try:
-            request = build_image_request(
-                source_name,
-                quality_percent=40,
-                pixel_format=image_pb2.Image.PIXEL_FORMAT_JPEG,
-            )
-        except TypeError:
-            request = build_image_request(source_name, quality_percent=40)
+        request = build_image_request(
+            source_name,
+            quality_percent=75,
+            image_format=image_pb2.Image.FORMAT_JPEG,
+        )
         responses = self.client.get_image([request])
         if not responses:
             return None
         return responses[0].shot.image.data
+
+
+def visual_sources(sources):
+    """Picture cameras only. Depth and projected-depth sources are not shown."""
+    names = [str(name) for name in sources if name]
+    pictures = [name for name in names if _is_picture_source(name)]
+    return pictures or names
+
+
+def _is_picture_source(name):
+    lowered = name.lower()
+    if "depth" in lowered:
+        return False
+    return "fisheye" in lowered or lowered.endswith("_image")
+
+
+def prefer_visual_source(sources):
+    """Pick a camera that can return a picture. Depth sources cannot."""
+    names = visual_sources(sources)
+    for preferred in ("frontleft_fisheye_image", "frontright_fisheye_image"):
+        if preferred in names:
+            return preferred
+    for name in names:
+        lowered = name.lower()
+        if "fisheye" in lowered and "depth" not in lowered:
+            return name
+    for name in names:
+        if "depth" not in name.lower():
+            return name
+    return names[0] if names else None

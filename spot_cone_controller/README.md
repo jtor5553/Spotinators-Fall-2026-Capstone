@@ -12,6 +12,14 @@ python -m venv .venv
 
 Open http://127.0.0.1:8000. Type any robot IP, press Connect to Spot, then try Stand, Sit, Stop, and a half-second cone drop.
 
+To drive that same mock session with a PG-9083S, pair it in PC mode first: hold Home and X until the LED flashes, then add it in Windows Bluetooth settings. Android mode is invisible to this program. Start with:
+
+```powershell
+.\.venv\Scripts\python main.py --mock-dispenser --gamepad
+```
+
+The controller card should say `Xbox 360 Controller`. Push a stick to walk. The right trigger raises the top speed. A drops a cone, the right bumper stands, the left bumper sits, and Start stops. Startup still says `Mode: MOCK`. Use `--real` when the Ethernet cable is plugged into Spot. `--mock` forces practice mode.
+
 Check without the browser:
 
 ```powershell
