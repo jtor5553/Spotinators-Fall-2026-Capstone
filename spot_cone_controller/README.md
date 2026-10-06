@@ -29,10 +29,11 @@ Check without the browser:
 ## Jetson
 
 ```bash
+sudo apt-get install -y python3-dev gcc
 python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python main.py --mock-dispenser
+.venv/bin/python -m pip install -r requirements-jetson.txt
 bash scripts/system_check.sh
+.venv/bin/python main.py --mock-dispenser --gamepad
 ```
 
-The first run is mock mode. It does not move Spot or power the cone motor. Follow the repository guide before changing `config/config.yaml`.
+The first run does not move Spot or power the cone motor. `--gamepad` reads a paired PS5 DualSense. If the system check says `hid-playstation: NOT FOUND`, Bluetooth DualSense will not appear. Do not continue the PS5 steps. Follow the repository guide before changing `config/config.yaml`.

@@ -67,9 +67,21 @@
     setDot("spot-dot", spot.connection === "CONNECTED");
     byId("spot-battery").textContent = spot.battery === null || spot.battery === undefined ? "--" : spot.battery + "%";
     byId("spot-posture").textContent = spot.robot_state || "Unknown";
-    byId("spot-motors").textContent = spot.motors || "--";
+    byId("spot-motors").textContent = motorLine(spot);
     var velocity = spot.velocity || [0, 0, 0];
     byId("spot-speed").textContent = "Velocity " + velocity.map(formatNum).join(", ");
+  }
+
+  function motorLine(spot) {
+    var text = spot.motors || "--";
+    if (spot.motor_error) {
+      text += " — " + spot.motor_error;
+    }
+    var faults = spot.behavior_faults || [];
+    if (faults.length) {
+      text += " — " + faults.map(function (fault) { return fault.cause; }).join(", ");
+    }
+    return text;
   }
 
   function renderPad(status) {

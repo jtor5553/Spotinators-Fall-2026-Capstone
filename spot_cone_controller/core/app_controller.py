@@ -59,6 +59,7 @@ class AppController:
         self._controller_loss_handled = False
         self._spot_loss_handled = False
         self._lease_logged = False
+        self._lease_loss_logged = False
         self._motor_faulted = False
 
     def startup(self):
@@ -354,6 +355,7 @@ class AppController:
 
     def _tick_locked(self, now):
         self.autonomy.tick()
+        self._note_lease_loss_locked()
         self._refresh_spot(now)
         self._apply_motor_timeout()
         pad = self.gamepad.snapshot()
@@ -474,11 +476,20 @@ class AppController:
             self.watchdog.clear_motion()
             self.state = SystemState.ARMED
             return
-        moved = self.spot.set_velocity(*command, duration_sec=movement.get("command_duration_sec", 0.4))
+        try:
+            moved = self.spot.set_velocity(
+                *command, duration_sec=movement.get("command_duration_sec", 0.4)
+            )
+        except Exception:
+            self._log_exception("velocity command failed")
+            moved = False
         if not moved:
             self.spot.stop()
             self.watchdog.clear_motion()
-            self.last_error = "Spot must be standing before it can drive."
+            if getattr(self.spot, "command_error", ""):
+                self.last_error = "Drive command was rejected. Release the sticks, then try again."
+            else:
+                self.last_error = "Spot must be standing before it can drive."
             self.state = SystemState.ARMED
             return
         self.watchdog.beat_motion(now)
@@ -525,13 +536,13 @@ class AppController:
     def _stand_locked(self):
         if not self._posture_allowed():
             return False, self.last_error
+        was_lost = self._lease_is_lost()
         try:
             self.spot.stand()
         except Exception as exc:
-            self.last_error = f"Stand failed: {exc}"
-            self.events.add("STAND FAILED")
-            return False, self.last_error
+            return self._posture_rejected("Stand", exc)
         self._spot_cache = self.spot.status()
+        self._note_lease_reacquired(was_lost)
         self.events.add("STAND COMMAND")
         if not self._lease_logged and (
             getattr(self.spot, "prepared", False) or self.config["system"].get("mock_mode", True)
@@ -546,12 +557,12 @@ class AppController:
     def _sit_locked(self):
         if not self._posture_allowed():
             return False, self.last_error
+        was_lost = self._lease_is_lost()
         try:
             self.spot.sit()
         except Exception as exc:
-            self.last_error = f"Sit failed: {exc}"
-            self.events.add("SIT FAILED")
-            return False, self.last_error
+            return self._posture_rejected("Sit", exc)
+        self._note_lease_reacquired(was_lost)
         self.watchdog.clear_motion()
         self._spot_cache = self.spot.status()
         self.events.add("SIT COMMAND")
@@ -559,6 +570,35 @@ class AppController:
             self.state = SystemState.ARMED if self.safety.motion_allowed else SystemState.CONTROL_READY
         self.last_error = ""
         return True, "Sit command sent."
+
+    def _posture_rejected(self, action, exc):
+        self.last_error = _posture_failure(action, exc, self.spot)
+        self.events.add(f"{action.upper()} FAILED")
+        self.events.add(self.last_error)
+        return False, self.last_error
+
+    def _lease_is_lost(self):
+        lease = getattr(self.spot, "lease", None)
+        return bool(lease is not None and getattr(lease, "lost", False))
+
+    def _note_lease_loss_locked(self):
+        lease = getattr(self.spot, "lease", None)
+        if lease is None or not getattr(lease, "lost", False) or self._lease_loss_logged:
+            return
+        self._lease_loss_logged = True
+        self.events.add("LEASE LOST")
+        detail = getattr(lease, "failure", "") or ""
+        if detail:
+            self.last_error = f"Spot dropped the control lease: {detail}"
+        else:
+            self.last_error = "Spot dropped the control lease. Stand to take control again."
+
+    def _note_lease_reacquired(self, was_lost):
+        if not was_lost or self._lease_is_lost():
+            return
+        self.events.add("LEASE REACQUIRED")
+        self._lease_loss_logged = False
+        self._lease_logged = True
 
     def _posture_allowed(self):
         if not self.spot.connected:
@@ -717,3 +757,15 @@ class AppController:
     def _log_exception(self, message):
         if self.logger is not None:
             self.logger.exception(message)
+
+
+def _posture_failure(action, exc, spot):
+    text = f"{action} failed: {exc}"
+    motor_error = getattr(spot, "motor_error", "") or ""
+    if motor_error and motor_error not in text:
+        text = f"{text} {motor_error}"
+    faults = getattr(spot, "behavior_faults", None) or []
+    causes = [str(fault.get("cause")) for fault in faults if fault.get("cause")]
+    if causes:
+        text = text + " Fault: " + ", ".join(causes)
+    return text
