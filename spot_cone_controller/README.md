@@ -1,6 +1,6 @@
 # Spotinators Fall 2026 Capstone
 
-Run the program from this folder. The setup guide, safety rules, and Jetson steps are in the repository guide: [Spotinators Fall 2026 Capstone](../README.md).
+Run the program from this folder. The setup guide, safety rules, and Jetson steps are in the repository guide: [Spotinators Fall 2026 Capstone](../README.md). The Orin Nano walkthrough is in [Jetson setup](../JETSON_SETUP.md).
 
 ## Windows
 
@@ -27,6 +27,8 @@ Check without the browser:
 ```
 
 ## Jetson
+
+Follow [Jetson setup](../JETSON_SETUP.md) before changing `config/config.yaml`. The short first run is:
 
 ```bash
 sudo apt-get install -y python3-dev gcc

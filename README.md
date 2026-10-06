@@ -4,7 +4,7 @@ This is the Fall 2026 capstone software for Spotinators.
 
 A Boston Dynamics Spot robot tows a small trailer that drops traffic cones. An NVIDIA Jetson Orin Nano on the trailer is the controller. The Spot tablet is only a touchscreen. It opens this program in a web browser. It does not drive the robot.
 
-You can practice the full operator screen on a Windows PC, including a PG-9083S gamepad. Spot and the cone motor are connected later, on the Jetson. The Jetson uses the PS5 controller.
+You can practice the full operator screen on a Windows PC, including a PG-9083S gamepad. Spot and the cone motor are connected later, on the Jetson. The Jetson uses the PS5 controller. The full Orin Nano setup, from the first install through the controller, Spot, the cone motor, and boot, is in [Jetson setup](JETSON_SETUP.md).
 
 The on-screen title stays **Spot Cone Placement System**. That is the operator page. This repository is the capstone project around it.
 
@@ -74,6 +74,8 @@ Then:
 | Start | Options | Stop |
 
 ## Practice on the Jetson
+
+Follow [Jetson setup](JETSON_SETUP.md) on the Orin Nano. That guide is the full sequence: the virtual environment, the hardware check, Bluetooth pairing, permissions, Spot, the cone motor, the tablet, and starting at boot. The short first run is below.
 
 Copy this repository onto the Jetson, or clone it:
 
@@ -158,7 +160,7 @@ Connecting registers this program as Spot's software E-stop endpoint and allows 
 
 ### PS5 controller
 
-Skip this if the system check said Bluetooth was not found.
+The pairing, group, and udev steps are written out in [Jetson setup](JETSON_SETUP.md). Skip this if the system check said Bluetooth was not found.
 
 If `hid-playstation` is `NOT FOUND`, Bluetooth DualSense will not appear. Do not continue these steps. JetPack 6 includes that kernel module. JetPack 5 usually does not, and this program cannot add the driver.
 
@@ -295,6 +297,7 @@ From the `spot_cone_controller` folder, with the virtual environment activated o
 ## What is included
 
 ```text
+JETSON_SETUP.md           Orin Nano setup, from install through boot
 spot_cone_controller/     the program
   main.py                 starts the controller and the web page
   gui/                    the touchscreen page
