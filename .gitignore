@@ -5,4 +5,5 @@ venv/
 logs/
 *.log
 config/operator.yaml
+spot_cone_controller/config/operator.yaml
 .DS_Store

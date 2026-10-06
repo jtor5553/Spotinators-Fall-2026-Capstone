@@ -6,6 +6,30 @@ from tests.conftest import make_controller
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_software_estop_alone_does_not_latch(tmp_path):
+    app = make_controller(tmp_path)
+    app.startup()
+    app.connect_spot("10.0.0.9", "op", "pw")
+    app.stand()
+    app.spot.estop = True
+    app.spot.robot_estop_names = ["software_estop"]
+    app.tick(1.0)
+    assert app.state.value != "ESTOP"
+    assert app.snapshot()["commands"]["stand"] is True
+
+
+def test_hardware_estop_still_latches(tmp_path):
+    app = make_controller(tmp_path)
+    app.startup()
+    app.connect_spot("10.0.0.9", "op", "pw")
+    app.stand()
+    app.spot.estop = True
+    app.spot.robot_estop_names = ["hardware_estop"]
+    app.tick(1.0)
+    assert app.state.value == "ESTOP"
+    assert app.stand()[0] is False
+
+
 def test_estop_is_immediate_and_reset_does_not_drive(tmp_path):
     app = make_controller(tmp_path)
     app.startup()

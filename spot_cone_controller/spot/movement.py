@@ -12,13 +12,16 @@ cannot command a fast trailer tow.
 ABSOLUTE_MAX_FORWARD = 0.6
 ABSOLUTE_MAX_LATERAL = 0.4
 ABSOLUTE_MAX_ROTATION = 0.6
+BOOST_MAX_FORWARD = 1.2
+BOOST_MAX_LATERAL = 0.8
+BOOST_MAX_ROTATION = 1.2
 
 
 def clamp_velocity(forward, lateral, rotation):
     return (
-        _clamp(forward, ABSOLUTE_MAX_FORWARD),
-        _clamp(lateral, ABSOLUTE_MAX_LATERAL),
-        _clamp(rotation, ABSOLUTE_MAX_ROTATION),
+        _clamp(forward, BOOST_MAX_FORWARD),
+        _clamp(lateral, BOOST_MAX_LATERAL),
+        _clamp(rotation, BOOST_MAX_ROTATION),
     )
 
 

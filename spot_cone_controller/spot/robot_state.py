@@ -42,14 +42,18 @@ def _motor_text(state):
 
 def _estop_names(state):
     names = []
-    try:
-        from bosdyn.api import estop_pb2
-
-        none_level = estop_pb2.EstopState.ESTOP_LEVEL_NONE
-    except Exception:
-        none_level = 0
+    stopped = _stopped_level()
     for estop_state in getattr(state, "estop_states", None) or []:
-        level = getattr(estop_state, "state", none_level)
-        if level != none_level:
+        level = getattr(estop_state, "state", stopped)
+        if level == stopped:
             names.append(str(getattr(estop_state, "name", "estop")))
     return names
+
+
+def _stopped_level():
+    try:
+        from bosdyn.api.robot_state_pb2 import EStopState
+
+        return EStopState.STATE_ESTOPPED
+    except Exception:
+        return 1
