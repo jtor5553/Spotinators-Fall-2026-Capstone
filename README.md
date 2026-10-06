@@ -1,315 +1,43 @@
 # Spotinators Fall 2026 Capstone
 
-This is the Fall 2026 capstone software for Spotinators.
+A Boston Dynamics Spot robot tows a small trailer that drops traffic cones. The program on the trailer is the controller. The Spot tablet only opens that program in a browser. It does not drive the robot.
 
-A Boston Dynamics Spot robot tows a small trailer that drops traffic cones. An NVIDIA Jetson Orin Nano on the trailer is the controller. The Spot tablet is only a touchscreen. It opens this program in a web browser. It does not drive the robot.
+The page title is **Spot Cone Placement System**. Practice it on a Windows PC first. Connect Spot and the cone motor later, on the Jetson.
 
-You can practice the full operator screen on a Windows PC, including a PG-9083S gamepad. Spot and the cone motor are connected later, on the Jetson. The Jetson uses the PS5 controller. The full Orin Nano setup, from the first install through the controller, Spot, the cone motor, and boot, is in [Jetson setup](JETSON_SETUP.md).
+## Start here
 
-The on-screen title stays **Spot Cone Placement System**. That is the operator page. This repository is the capstone project around it.
+Pick the computer you are sitting at.
 
-## Practice on Windows
+- **[Windows setup](WINDOWS_SETUP.md).** Practice the page, and drive with a PG-9083S gamepad. Spot and the motor stay mocked.
+- **[Jetson setup](JETSON_SETUP.md).** Set up the Orin Nano on the trailer: the PS5 controller, Spot, the cone motor, the Spot tablet over Spot's Wi-Fi, and starting at boot.
 
-Open PowerShell in this repository folder, then run:
+Read the safety rules below before either computer is connected to the real robot.
 
-```powershell
-cd spot_cone_controller
-python -m venv .venv
-.\.venv\Scripts\python -m pip install -r requirements.txt
-.\.venv\Scripts\python main.py --mock-dispenser
-```
-
-Leave that window open. In a browser, open:
-
-http://127.0.0.1:8000
-
-Then:
-
-1. Type any numbers into Robot IP. Mock mode does not use a real address. The username can stay `user2`.
-2. Leave the password blank and press **Connect to Spot**. **Practice without Spot** only opens the operator page. Commands still need a connection.
-3. Press **Stand**, then **Sit**, then **Stop**.
-4. Press and hold **Hold to drop cone** for half a second. The count goes from 4 to 3. Holding longer does not drop a second cone.
-5. Press **Emergency stop**. The page says EMERGENCY STOP ACTIVE immediately. Stand is refused until you press **Reset E-stop**.
-
-Press Ctrl+C in PowerShell when you want to quit.
-
-The startup text should include `Mode: MOCK` and `Dispenser: READY`. If you start without `--mock-dispenser`, the dispenser stays `DISABLED` and cone drops are refused. That is the safe default.
-
-To check the same path without a browser:
-
-```powershell
-.\.venv\Scripts\python main.py --self-test
-```
-
-The last line should say `25 / 25 checks passed`.
-
-### PG-9083S on Windows
-
-Pair the pad in PC mode before starting the program. Hold Home and X until the LED flashes, then add it in Windows Bluetooth settings. Android or DirectInput mode is invisible to this program.
-
-From `spot_cone_controller`:
-
-```powershell
-.\.venv\Scripts\python main.py --mock-dispenser --gamepad
-```
-
-Open http://127.0.0.1:8000. The controller card should say `Xbox 360 Controller`. Stick numbers should move when you push the sticks. Pull the right trigger and **Boost** should show Held with a percent. Startup still says `Mode: MOCK`. `--mock` forces the fake controller even if `--gamepad` is also present.
-
-Then:
-
-1. Type any Robot IP, leave the password blank, and press **Connect to Spot**.
-2. Press **Stand**, then **Enable driving**.
-3. Push the left stick to walk and the right stick to turn. Speed follows how far each stick is pushed. Hold the right trigger to raise the top speed. Releasing the sticks stops.
-4. Hold A for half a second to drop one cone.
-5. The right bumper stands, the left bumper sits, and Start stops.
-
-| PG-9083S | PS5 | What it does |
-| --- | --- | --- |
-| Left stick | Left stick | Walk. Speed follows how far you push it. |
-| Right stick | Right stick | Turn. |
-| Right trigger | R2 | Hold to go faster. |
-| Left bumper | L1 | Sit |
-| Right bumper | R1 | Stand |
-| A (bottom) | Cross | Hold for half a second to drop one cone. |
-| Start | Options | Stop |
-
-## Practice on the Jetson
-
-Follow [Jetson setup](JETSON_SETUP.md) on the Orin Nano. That guide is the full sequence: the virtual environment, the hardware check, Bluetooth pairing, permissions, Spot, the cone motor, the tablet, and starting at boot. The short first run is below.
-
-Copy this repository onto the Jetson, or clone it:
-
-```bash
-git clone https://github.com/jtor5553/Spotinators-Fall-2026-Capstone.git
-cd Spotinators-Fall-2026-Capstone/spot_cone_controller
-sudo apt-get install -y python3-dev gcc
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements-jetson.txt
-.venv/bin/python main.py --mock-dispenser
-```
-
-`python3-dev` and `gcc` are there so `evdev` can build inside the virtual environment. On the Jetson itself, open http://127.0.0.1:8000.
-
-From the Spot tablet, open `http://<jetson-ip>:8000`. The tablet only displays the page. Closing the tablet does not stop the program on the Jetson.
-
-This first Jetson run is still mock mode. It does not move Spot or power the motor. After the PS5 controller is paired, start the same practice with `--gamepad` so the sticks are read. That command is in the PS5 section below.
-
-Before changing any network setting, run the read-only hardware check:
-
-```bash
-bash scripts/system_check.sh
-```
-
-Save the whole output. It reports Wi-Fi, Bluetooth, whether `hid-playstation` is loaded, whether this user is in the `input` and `bluetooth` groups, whether the virtual environment can import `evdev`, and whether a DualSense gamepad node is present. It does not change the radio or pair a controller. The Orin Nano Developer Kit does not include those radios unless a card or USB adapter was added.
-
-If `hid-playstation` is `NOT FOUND`, Bluetooth DualSense will not appear. Do not continue the PS5 steps. JetPack 6 includes that module. JetPack 5 usually does not, and this program cannot add the driver.
-
-## What the buttons do
-
-| Control | What it does |
-| --- | --- |
-| Stand | Spot stands. On the real robot this is the first command that takes control. The right bumper (R1 on PS5) does the same thing. |
-| Sit | Spot sits. The left bumper (L1 on PS5) does the same thing. |
-| Stop | Speed goes to zero and the cone motor turns off. Spot stays in its current posture. Start (Options on PS5) does the same thing. |
-| Enable driving | Arms the sticks. Required after Stand, and again after Resume. |
-| Resume | Clears a stop. Does not start driving by itself. |
-| Emergency stop | Stops immediately. There is no confirmation question. |
-| Reset E-stop | Clears the software E-stop. Driving stays off. |
-| Left stick | Forward, back, and sideways. Speed follows how far the stick is pushed. |
-| Right stick | Rotate. Speed follows how far the stick is pushed. |
-| Right trigger / R2 | Raises the top speed while it is held. A full pull doubles the normal cap. |
-| Release the sticks | Speed goes to zero immediately. |
-| A or Cross, held 0.5 seconds | Drops one cone. A tap does nothing. Holding the button does not drop more cones. |
-
-The same list is on the operator page under **Controller buttons**.
-
-After Stop, or after the controller disconnects, press **Resume** and then **Enable driving** before the sticks will move Spot again.
-
-## Safety rules
-
-Read this before the real robot is connected.
+## Safety
 
 - The program starts disarmed. The motor starts off.
 - Restarting the program does not continue an old move or an old motor command.
 - Sticks do nothing until Spot is standing and driving is enabled.
-- How far a stick is pushed sets the speed. With the right trigger released, the caps are 0.6 m/s forward, 0.4 m/s sideways, and 0.6 rad/s turning.
-- A full right-trigger pull raises those caps to 1.2 m/s forward, 0.8 m/s sideways, and 1.2 rad/s turning. The program will not command faster than that.
-- Releasing the sticks sends a stop. Each speed command stays valid for 2 seconds so a slow Wi-Fi hop does not expire it. If commands stop arriving, the watchdog stops the robot.
 - If the gamepad disconnects, Spot stops and cone drops are disabled.
-- Stop and Emergency stop are different buttons. Do not treat them as the same thing.
-- The software E-stop does not replace Spot's physical E-stop, or the mushroom E-stop on the trailer. Those buttons must still cut power.
+- Stop and Emergency stop are different controls. Emergency stop has no confirmation question.
+- The software E-stop does not replace Spot's physical E-stop, or the mushroom E-stop on the trailer.
 - Do the first real tests in a closed lot, not in traffic.
-- The Spot password is typed on the tablet and kept in memory. Do not put it in `config.yaml`. Remembering the IP and username writes only those two fields to `config/operator.yaml` on that computer.
+- The Spot password is typed on the page and kept in memory. Do not put it in `config.yaml`.
 
-## Connect the real hardware
+Speed limits, the button list, and what to do when a screen looks wrong are in the setup guide for the computer you are using.
 
-Do these one at a time, after the mock practice above works. Stay in a clear area with Spot's physical E-stop in reach.
-
-### Spot
-
-1. On the computer that will talk to Spot, while it still has internet, run `python -m pip install bosdyn-client`.
-2. Start with `--real`, or set `system.mock_mode: false` in `spot_cone_controller/config/config.yaml`. `--mock` still forces practice mode if both are present.
-3. Leave the controller mocked and the dispenser disabled for this test.
-4. Plug the computer's Ethernet port into Spot.
-5. Open the page. The username starts as `user2`. Type Spot's IP and password, then press Connect. Check **Remember IP and username on this computer** if the next start should fill those two fields in. The password is cleared from the page after each attempt.
-6. Confirm the battery and posture. Then press Stand, Sit, and Stop.
-
-A failed connection stays on the page. The usual causes are a disconnected Ethernet cable, the wrong IP, or the wrong password.
-
-Connecting registers this program as Spot's software E-stop endpoint and allows motion. A hardware E-stop still latches the page until that button is released and you press Reset E-stop. Stand is the step that takes control of Spot. Connecting reads status and clears only the software endpoint.
-
-### PS5 controller
-
-The pairing, group, and udev steps are written out in [Jetson setup](JETSON_SETUP.md). Skip this if the system check said Bluetooth was not found.
-
-If `hid-playstation` is `NOT FOUND`, Bluetooth DualSense will not appear. Do not continue these steps. JetPack 6 includes that kernel module. JetPack 5 usually does not, and this program cannot add the driver.
-
-1. From `spot_cone_controller`, install the input library inside the virtual environment if the Jetson setup above has not already done it:
-
-```bash
-sudo apt-get install -y python3-dev gcc
-.venv/bin/python -m pip install -r requirements-jetson.txt
-```
-
-2. Pair the DualSense once, then trust it so the Jetson can connect again later. In a terminal:
-
-```bash
-bluetoothctl
-```
-
-Then:
+## What is in this repository
 
 ```text
-power on
-agent on
-default-agent
-scan on
-```
-
-Wait until the controller appears as DualSense or Wireless Controller. Use its address in the next three lines:
-
-```text
-pair AA:BB:CC:DD:EE:FF
-trust AA:BB:CC:DD:EE:FF
-connect AA:BB:CC:DD:EE:FF
-scan off
-quit
-```
-
-3. Let this user read the controller, and install the udev rule. Log out and back in after the group change so the new groups apply.
-
-```bash
-sudo usermod -aG input,bluetooth "$USER"
-sudo cp deploy/99-dualsense.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-```
-
-4. Start practice with the real controller. Spot stays mocked, and the cone motor stays mocked:
-
-```bash
-.venv/bin/python main.py --mock-dispenser --gamepad
-```
-
-The controller card should show the DualSense name. Stick values should move before you enable driving. L1 sits, R1 stands, and R2 is the speed boost.
-
-`--gamepad` turns the mock controller off for that run. Setting `controller.mock: false` in `config.yaml` does the same thing on every start. The program connects a DualSense that is already paired. It does not scan, pair, or trust a new controller. Motion-sensor and touchpad nodes are ignored. The Search paired button only lists controllers Linux already knows. On Windows, skip this section and start with `--gamepad` instead.
-
-### Cone motor
-
-Do not enable the real motor until mock drops, the half-second hold, and Emergency stop have been practiced.
-
-The trailer uses one motor on channel 1 of a Cytron MDD10A. Channel 2 is unused. Pin numbers stay empty until the wiring is finished. The program will not energize the motor while those pins are empty.
-
-When the pins are known, set them in `config.yaml`, then set:
-
-```yaml
-dispenser:
-  enabled: true
-  mock: false
-  dir_pin: 0
-  pwm_pin: 0
-```
-
-Replace the zeros with the real header pins. Limit switches stay off unless both switch pins are installed.
-
-The cone count starts at 4. Use minus, plus, or Reset when the trailer is reloaded. The count drops only after a drop finishes. A rejected or timed-out command does not change it.
-
-### Cameras
-
-After Spot is connected, the page lists picture cameras and shows one at a time. Depth and projected-depth sources stay off the page. When Spot reports `frontleft_fisheye_image`, that camera is selected first. The starting size is 640 by 480 at 5 frames per second. Try 10 frames per second only if the page stays responsive. Do not assume the mock names front, left, right, and rear exist on the real robot.
-
-### Tablet Wi-Fi
-
-Run `bash scripts/setup_hotspot.sh` first. If it says `Wi-Fi: NOT FOUND`, stop. There is nothing to configure.
-
-When a Wi-Fi interface is present, create the network with the interface name and address you choose:
-
-```bash
-sudo bash scripts/setup_hotspot.sh --apply --interface wlan0 --address 192.168.50.1 --password 'choose-a-passphrase'
-```
-
-`192.168.50.1` is only an example. The tablet joins `SPOT-CONE-CONTROL` and opens `http://<that-address>:8000`. Internet is not required.
-
-### Start when the Jetson boots
-
-Edit the user name and the home-directory paths in `spot_cone_controller/deploy/spot-cone-controller.service`. The service starts the virtualenv Python with `--gamepad`, waits for Bluetooth, and adds the `input` and `bluetooth` groups. Spot stays in mock mode until `mock_mode` is changed in `config.yaml`.
-
-```bash
-sudo cp deploy/spot-cone-controller.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now spot-cone-controller.service
-```
-
-Leave `mock_mode: true` until a supervised test has passed. A crash restart comes back disarmed, with the motor off.
-
-## Tests
-
-From the `spot_cone_controller` folder, with the virtual environment activated or by calling its Python directly:
-
-```powershell
-.\.venv\Scripts\python -m pytest
-```
-
-```bash
-.venv/bin/python -m pytest
-```
-
-## If something looks wrong
-
-| What you see | What to do |
-| --- | --- |
-| `Mode: MOCK` | This is practice mode. Set `mock_mode: false` only when Spot is connected on purpose. |
-| Dispenser says DISABLED | Start with `--mock-dispenser`, or set `dispenser.enabled: true` for a mock practice. |
-| The page does not open | The PowerShell or Jetson window must still be running `main.py`. Use http://127.0.0.1:8000 on that same computer. |
-| SDK is not installed | On the Jetson, run `python3 -m pip install bosdyn-client`. |
-| evdev is not installed | Expected on Windows. Use `--gamepad` there. On the Jetson, from `spot_cone_controller`, run `sudo apt-get install -y python3-dev gcc` and `.venv/bin/python -m pip install -r requirements-jetson.txt`. |
-| `hid-playstation: NOT FOUND` | Bluetooth DualSense will not appear. Do not continue the PS5 steps. JetPack 6 includes the module. JetPack 5 usually does not. |
-| DualSense is present but cannot be read | Add the user to the `input` group, install `deploy/99-dualsense.rules`, then log out and back in. |
-| DualSense not found | Pair it once, trust it, and start with `--gamepad`. The program ignores motion-sensor and touchpad nodes. |
-| Gamepad not found | Put the PG-9083S in PC mode (hold Home and X) and pair it again in Bluetooth settings. Restart with `--gamepad`. |
-| Sticks move on the card but Spot stays still | Press Stand, then Enable driving. After Stop, press Resume and then Enable driving again. |
-| Boost stays Released | Pull the right trigger. On the PS5 that trigger is R2. |
-| Wi-Fi NOT FOUND | Do not set up a hotspot. The Jetson has no Wi-Fi radio in that result. |
-| `$'\r': command not found` | The script has Windows line endings. On the Jetson run `sed -i 's/\r$//' scripts/system_check.sh` and try again. |
-| Emergency stop will not clear | Press Reset E-stop, then Resume, then Enable driving. Also release Spot's physical E-stop if it is pressed. |
-
-## What is included
-
-```text
+WINDOWS_SETUP.md          practice on a Windows PC
 JETSON_SETUP.md           Orin Nano setup, from install through boot
 spot_cone_controller/     the program
   main.py                 starts the controller and the web page
   gui/                    the touchscreen page
-  controller/             stick mapping, DualSense reader, Windows XInput reader
+  controller/             stick mapping, DualSense reader, Windows gamepad reader
   spot/                   real Spot connection
-  mocks/                  fake Spot and fake controller
-  dispenser/              cone motor, mock motor, optional limit switches
-  safety/                 stop, E-stop, and the watchdog
+  dispenser/              cone motor
   config/                 settings. Do not store the Spot password here.
-  scripts/                Jetson hardware check and optional hotspot
-  deploy/                 startup service and DualSense udev rule
-  tests/                  mock tests
 ```
 
-The page, the gamepad, and any future autonomy mode all send requests to one controller. That controller decides what is allowed. Autonomy, GPS routes, and automatic cone spacing are not in this version. Manual control remains the path those features would have to use later.
+The page and the gamepad both send requests to one controller. That controller decides what is allowed. Autonomy, GPS routes, and automatic cone spacing are not in this version.

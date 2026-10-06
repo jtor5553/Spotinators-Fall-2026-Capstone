@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import threading
+import time
 
 from controller.controller_state import ControllerState
 
@@ -25,6 +26,7 @@ BTN_TR = 0x137
 BTN_TR2 = 0x139
 BTN_START = 0x13B
 
+# hid-playstation names the buttons. Square is BTN_WEST and is unused here.
 KEY_BUTTONS = {
     BTN_SOUTH: "x",
     BTN_EAST: "circle",
@@ -33,6 +35,19 @@ KEY_BUTTONS = {
     BTN_TR: "rb",
     BTN_START: "options",
 }
+# hid-generic numbers Sony's usages from Square = button 1, so the same
+# physical buttons land on different codes. R2's digital bit is 0x137.
+GENERIC_KEY_BUTTONS = {
+    0x131: "x",
+    0x132: "circle",
+    0x133: "triangle",
+    0x134: "lb",
+    0x135: "rb",
+    0x139: "options",
+}
+GENERIC_R2_CODE = 0x137
+PLAYSTATION_LAYOUT = "playstation"
+GENERIC_LAYOUT = "generic"
 
 PERMISSION_MESSAGE = (
     "DualSense is present but cannot be read. "
@@ -139,6 +154,48 @@ class DualSenseController:
         return None
 
     def _read(self, device, evdev):
+        event_path = getattr(device, "path", "")
+        hidraw = _open_hidraw(event_path)
+        if hidraw is not None:
+            used = self._read_hidraw(hidraw)
+            _close_fd(hidraw)
+            if used:
+                _close_device(device)
+                return
+        self._read_evdev(device, layout_from_driver(read_input_driver(event_path)))
+
+    def _read_hidraw(self, fd):
+        """Read Sony's report. Return False if this node is not a DualSense report."""
+        import select
+
+        deadline = time.monotonic() + 1.0
+        while not self._stop.is_set():
+            ready, _, _ = select.select([fd], [], [], 0.2)
+            packet = b""
+            if ready:
+                packet = _read_hid_packet(fd)
+                if packet is None:
+                    return False
+            sample = parse_dualsense_report(packet)
+            if sample is None:
+                if time.monotonic() >= deadline:
+                    return False
+                continue
+            apply_dualsense_sample(self.state, sample)
+            break
+        while not self._stop.is_set():
+            ready, _, _ = select.select([fd], [], [], 0.2)
+            if not ready:
+                continue
+            packet = _read_hid_packet(fd)
+            if packet is None:
+                return True
+            sample = parse_dualsense_report(packet)
+            if sample is not None:
+                apply_dualsense_sample(self.state, sample)
+        return True
+
+    def _read_evdev(self, device, layout):
         import select
 
         try:
@@ -154,7 +211,7 @@ class DualSenseController:
                 if not ready:
                     continue
                 for event in device.read():
-                    analog_r2 = self._handle(event, device, left, right, analog_r2)
+                    analog_r2 = self._handle(event, device, left, right, analog_r2, layout)
         except OSError:
             return
         finally:
@@ -164,12 +221,12 @@ class DualSenseController:
                 pass
             _close_device(device)
 
-    def _handle(self, event, device, left, right, analog_r2):
+    def _handle(self, event, device, left, right, analog_r2, layout):
         if event.type == EV_ABS:
             info = device.absinfo(event.code)
             return apply_axis_event(self.state, event.code, event.value, info, left, right, analog_r2)
         if event.type == EV_KEY:
-            apply_key_event(self.state, event.code, event.value, analog_r2)
+            apply_key_event(self.state, event.code, event.value, analog_r2, layout)
         return analog_r2
 
 
@@ -215,15 +272,79 @@ def apply_axis_event(state, code, value, info, left, right, analog_r2):
     return analog_r2
 
 
-def apply_key_event(state, code, value, analog_r2):
-    """Map face buttons. BTN_TR2 is R2 only when the analog trigger axis is absent."""
+def layout_from_driver(name):
+    """hid-generic numbers buttons from Square. hid-playstation names them."""
+    if "generic" in (name or "").lower():
+        return GENERIC_LAYOUT
+    return PLAYSTATION_LAYOUT
+
+
+def buttons_for_layout(layout):
+    if layout == GENERIC_LAYOUT:
+        return GENERIC_KEY_BUTTONS
+    return KEY_BUTTONS
+
+
+def r2_code_for_layout(layout):
+    if layout == GENERIC_LAYOUT:
+        return GENERIC_R2_CODE
+    return BTN_TR2
+
+
+def apply_key_event(state, code, value, analog_r2, layout=PLAYSTATION_LAYOUT):
+    """Map face buttons. A digital R2 press still counts when an axis is present."""
     pressed = value != 0
-    if code == BTN_TR2:
-        if not analog_r2:
-            state.set_r2(1.0 if pressed else 0.0)
+    if code == r2_code_for_layout(layout):
+        if pressed:
+            state.set_r2(1.0)
+        elif not analog_r2:
+            state.set_r2(0.0)
         return
-    name = KEY_BUTTONS.get(code)
+    name = buttons_for_layout(layout).get(code)
     if name:
+        state.set_button(name, pressed)
+
+
+def parse_dualsense_report(data):
+    """Decode one USB or Bluetooth DualSense input report.
+
+    Sticks are returned as (x, y) with +x right and +y up. Returns None when
+    the packet is not a DualSense input report.
+    """
+    if not data:
+        return None
+    report_id = data[0]
+    if report_id == 0x31 and len(data) >= 12:
+        base = 2
+    elif report_id == 0x01 and len(data) >= 64:
+        base = 1
+    else:
+        return None
+    if len(data) < base + 9:
+        return None
+    buttons0 = data[base + 7]
+    buttons1 = data[base + 8]
+    return {
+        "left": (_stick_byte(data[base + 0]), -_stick_byte(data[base + 1])),
+        "right": (_stick_byte(data[base + 2]), -_stick_byte(data[base + 3])),
+        "r2": max(0.0, min(1.0, data[base + 5] / 255.0)),
+        "buttons": {
+            "x": bool(buttons0 & 0x20),
+            "circle": bool(buttons0 & 0x40),
+            "triangle": bool(buttons0 & 0x80),
+            "lb": bool(buttons1 & 0x01),
+            "rb": bool(buttons1 & 0x02),
+            "options": bool(buttons1 & 0x20),
+        },
+    }
+
+
+def apply_dualsense_sample(state, sample):
+    """Apply one full report. Released buttons are cleared."""
+    state.set_left(sample["left"][0], sample["left"][1])
+    state.set_right(sample["right"][0], sample["right"][1])
+    state.set_r2(sample["r2"])
+    for name, pressed in sample["buttons"].items():
         state.set_button(name, pressed)
 
 
@@ -345,6 +466,66 @@ def _sysfs_name(path):
             return handle.read().strip()
     except OSError:
         return ""
+
+
+def read_input_driver(event_path):
+    """Return the HID driver name for an event node, or an empty string."""
+    event = os.path.basename(event_path or "")
+    if not event:
+        return ""
+    link = os.path.join("/sys/class/input", event, "device", "device", "driver")
+    try:
+        return os.path.basename(os.readlink(link))
+    except OSError:
+        return ""
+
+
+def hidraw_path_for_input(event_path):
+    event = os.path.basename(event_path or "")
+    if not event:
+        return None
+    base = os.path.join("/sys/class/input", event, "device")
+    for candidate in (os.path.join(base, "device", "hidraw"), os.path.join(base, "hidraw")):
+        try:
+            names = [name for name in os.listdir(candidate) if name.startswith("hidraw")]
+        except OSError:
+            continue
+        if names:
+            return os.path.join("/dev", sorted(names)[0])
+    return None
+
+
+def _open_hidraw(event_path):
+    path = hidraw_path_for_input(event_path)
+    if not path:
+        return None
+    try:
+        return os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+    except OSError:
+        return None
+
+
+def _read_hid_packet(fd):
+    try:
+        return os.read(fd, 128)
+    except BlockingIOError:
+        return b""
+    except OSError:
+        return None
+
+
+def _close_fd(fd):
+    if fd is None:
+        return
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+
+
+def _stick_byte(value):
+    scaled = (int(value) - 128) / 128.0
+    return max(-1.0, min(1.0, scaled))
 
 
 def _close_device(device):

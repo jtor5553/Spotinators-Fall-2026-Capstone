@@ -95,6 +95,9 @@
     byId("right-x").textContent = formatNum(pad.right.x);
     byId("right-y").textContent = formatNum(pad.right.y);
     byId("button-x").textContent = pad.buttons.x ? "Held" : "Released";
+    byId("button-lb").textContent = pad.buttons.lb ? "Held" : "Released";
+    byId("button-rb").textContent = pad.buttons.rb ? "Held" : "Released";
+    byId("button-options").textContent = pad.buttons.options ? "Held" : "Released";
   }
 
   function renderDispenser(status) {

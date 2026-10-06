@@ -95,6 +95,69 @@ def test_face_buttons_keep_existing_names():
     }
 
 
+def test_generic_driver_numbers_buttons_from_square():
+    from controller.dualsense import GENERIC_LAYOUT, layout_from_driver
+
+    assert layout_from_driver("hid-generic") == GENERIC_LAYOUT
+    assert layout_from_driver("hid-playstation") == "playstation"
+    state = ControllerState()
+    apply_key_event(state, 0x131, 1, False, "generic")
+    apply_key_event(state, 0x134, 1, False, "generic")
+    apply_key_event(state, 0x135, 1, False, "generic")
+    apply_key_event(state, 0x139, 1, False, "generic")
+    apply_key_event(state, 0x137, 1, False, "generic")
+    buttons = state.snapshot()["buttons"]
+    assert buttons["x"] is True
+    assert buttons["lb"] is True
+    assert buttons["rb"] is True
+    assert buttons["options"] is True
+    assert state.get_r2() == 1.0
+
+
+def test_usb_and_bluetooth_reports_map_the_same_buttons():
+    from controller.dualsense import apply_dualsense_sample, parse_dualsense_report
+
+    usb = bytearray(64)
+    usb[0] = 0x01
+    usb[1] = 128
+    usb[2] = 0
+    usb[3] = 255
+    usb[4] = 128
+    usb[6] = 255
+    usb[8] = 0x20
+    usb[9] = 0x01 | 0x02 | 0x20
+    sample = parse_dualsense_report(bytes(usb))
+    assert sample["buttons"] == {
+        "x": True,
+        "circle": False,
+        "triangle": False,
+        "lb": True,
+        "rb": True,
+        "options": True,
+    }
+    assert sample["r2"] == 1.0
+    assert sample["left"][1] == 1.0
+    assert sample["right"][0] > 0.9
+
+    bluetooth = bytearray(78)
+    bluetooth[0] = 0x31
+    bluetooth[2] = 128
+    bluetooth[3] = 255
+    bluetooth[9] = 0x80
+    bluetooth[10] = 0x20
+    sample = parse_dualsense_report(bytes(bluetooth))
+    assert sample["buttons"]["triangle"] is True
+    assert sample["buttons"]["options"] is True
+    assert sample["left"][1] < -0.9
+    assert parse_dualsense_report(b"\x01\x00\x00") is None
+
+    state = ControllerState()
+    state.set_button("x", True)
+    apply_dualsense_sample(state, parse_dualsense_report(bytes(bluetooth)))
+    assert state.get_button_x() is False
+    assert state.get_options() is True
+
+
 def test_connect_uses_only_an_already_paired_dualsense(monkeypatch):
     def fake_paired():
         return {

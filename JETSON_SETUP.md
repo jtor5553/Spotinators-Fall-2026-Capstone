@@ -6,7 +6,7 @@ Do these steps in order. Stop at the first check that fails. The program starts 
 
 The Spot password is typed on the page and kept in memory. Do not put it in `config.yaml` or in this guide.
 
-The short Windows practice and the button list are in [README.md](README.md).
+Practice on a Windows PC is in [Windows setup](WINDOWS_SETUP.md). The project overview and safety rules are in [README.md](README.md).
 
 ## What you need
 
@@ -263,9 +263,43 @@ After Spot is connected, the page lists picture cameras and shows one at a time.
 
 Change the rate in `config/config.yaml` under `camera` only after the page has already shown a picture at 5 frames per second.
 
-## 10. Tablet Wi-Fi
+## 10. Open the page on the Spot tablet
 
-Skip this if the hardware check said `Wi-Fi: NOT FOUND`.
+Use Spot's own Wi-Fi for this. The Jetson hotspot in the next section is only for a tablet that cannot join Spot's network.
+
+The Jetson must be plugged into Spot with the Ethernet cable, and `main.py` must still be running. The page listens on port 8000 on every network interface. The tablet opens a normal web browser. It does not use the Spot drive app, and closing the browser does not stop the program.
+
+1. On the Jetson, find the address on the Ethernet cable that goes to Spot. Spot itself is usually `192.168.80.3`, so the Jetson address is a different number on `192.168.80.0/24`.
+
+```bash
+ip -4 addr
+```
+
+Write that address down. Do not open `127.0.0.1` on the tablet. That address only works on the Jetson.
+
+2. If the Spot cable has no IPv4 address, add one on Spot's network. Use the interface name from the command above if it is not `eth0`. Do not use `192.168.80.3`. That address is Spot.
+
+```bash
+sudo ip addr add 192.168.80.50/24 dev eth0
+```
+
+This lasts until the Jetson reboots. If the tablet cannot open the page after a reboot, run the command again.
+
+3. On the Spot tablet, open Wi-Fi settings and connect to Spot's Wi-Fi. Use the network name and password configured on the robot. This is the same Wi-Fi the tablet already uses to reach Spot. It is not `SPOT-CONE-CONTROL`.
+
+4. Open the tablet's web browser and go to the Jetson address from step 1, port 8000. For the example address above, that is:
+
+```text
+http://192.168.80.50:8000
+```
+
+The operator page should load. Type Spot's IP and password there when you are ready to connect to the robot. The Wi-Fi password and the Spot password are different.
+
+5. If the browser cannot open the page, the tablet and the Jetson are not on the same network. Use the hotspot in the next section instead.
+
+## 11. Tablet hotspot
+
+Skip this if the tablet already opens the page over Spot's Wi-Fi. Also skip it if the hardware check said `Wi-Fi: NOT FOUND`.
 
 From `spot_cone_controller`, see the radios without changing them:
 
@@ -289,7 +323,7 @@ ip addr show wlan0
 
 Internet is not required for the tablet.
 
-## 11. Start when the Jetson boots
+## 12. Start when the Jetson boots
 
 Edit `deploy/spot-cone-controller.service` before copying it.
 
@@ -330,7 +364,8 @@ The usual causes are a username or path that was not replaced, a virtual environ
 | --- | --- |
 | `Mode: MOCK` | This is practice mode. Set `mock_mode: false`, or start with `--real`, only when Spot is connected on purpose. |
 | Dispenser says DISABLED | Start with `--mock-dispenser`, or set `dispenser.enabled: true` for a mock practice. |
-| The page does not open | The terminal or the systemd service must still be running `main.py`. On the Jetson use http://127.0.0.1:8000. From the tablet use the Jetson's address and port 8000. |
+| The page does not open | The terminal or the systemd service must still be running `main.py`. On the Jetson use http://127.0.0.1:8000. From the tablet, use the Jetson's `192.168.80` address and port 8000 while the tablet is on Spot's Wi-Fi. |
+| Only walk and Stand work | Update to this version and restart `main.py`. On the controller card, R1 should say Held when you press it, L1 when you press sit, and Options when you press stop. Right-stick left and right turns. R2 is boost. Hold Cross for half a second to drop one cone. |
 | `evdev (venv): NOT IMPORTABLE` | From `spot_cone_controller`, repeat step 3. |
 | `hid-playstation: NOT FOUND` | Bluetooth DualSense will not appear. Do not continue the PS5 steps. |
 | DualSense is present but cannot be read | Add the user to the `input` group, install `deploy/99-dualsense.rules`, then log out and back in. |
