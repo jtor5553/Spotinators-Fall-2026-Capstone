@@ -1,6 +1,6 @@
 # Spotinators Fall 2026 Capstone
 
-Run the program from this folder. The setup guide, safety rules, and Jetson steps are in the repository guide: [Spotinators Fall 2026 Capstone](../README.md).
+Run the program from this folder. The setup guide, safety rules, and Jetson steps are in the repository guide: [Spotinators Fall 2026 Capstone](../README.md). The Orin Nano walkthrough is in [Jetson setup](../JETSON_SETUP.md).
 
 ## Windows
 
@@ -28,11 +28,14 @@ Check without the browser:
 
 ## Jetson
 
+Follow [Jetson setup](../JETSON_SETUP.md) before changing `config/config.yaml`. The short first run is:
+
 ```bash
+sudo apt-get install -y python3-dev gcc
 python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python main.py --mock-dispenser
+.venv/bin/python -m pip install -r requirements-jetson.txt
 bash scripts/system_check.sh
+.venv/bin/python main.py --mock-dispenser --gamepad
 ```
 
-The first run is mock mode. It does not move Spot or power the cone motor. Follow the repository guide before changing `config/config.yaml`.
+The first run does not move Spot or power the cone motor. `--gamepad` reads a paired PS5 DualSense. If the system check says `hid-playstation: NOT FOUND`, Bluetooth DualSense will not appear. Do not continue the PS5 steps. Follow the repository guide before changing `config/config.yaml`.

@@ -15,6 +15,9 @@ ABSOLUTE_MAX_ROTATION = 0.6
 BOOST_MAX_FORWARD = 1.2
 BOOST_MAX_LATERAL = 0.8
 BOOST_MAX_ROTATION = 1.2
+# Spot rejects a command whose end time has already passed when it arrives.
+# On the robot Wi-Fi that trip can take longer than the 0.4 s refresh window.
+COMMAND_LIFETIME_SEC = 2.0
 
 
 def clamp_velocity(forward, lateral, rotation):
@@ -34,8 +37,8 @@ def _clamp(value, limit):
     return value
 
 
-def send_velocity(command_client, forward, lateral, rotation, duration_sec):
-    """Send one short-lived velocity command. The caller must refresh it."""
+def send_velocity(command_client, forward, lateral, rotation, duration_sec, timesync_endpoint=None):
+    """Send one velocity command. The caller must keep refreshing it."""
     import time
 
     from bosdyn.client.robot_command import RobotCommandBuilder
@@ -46,8 +49,13 @@ def send_velocity(command_client, forward, lateral, rotation, duration_sec):
         v_y=lateral,
         v_rot=rotation,
     )
-    end_time = time.time() + float(duration_sec)
-    command_client.robot_command(command, end_time_secs=end_time)
+    lifetime = max(float(duration_sec), COMMAND_LIFETIME_SEC)
+    end_time = time.time() + lifetime
+    command_client.robot_command(
+        command,
+        end_time_secs=end_time,
+        timesync_endpoint=timesync_endpoint,
+    )
     return (forward, lateral, rotation)
 
 

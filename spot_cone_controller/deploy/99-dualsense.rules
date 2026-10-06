@@ -1,0 +1,4 @@
+# DualSense USB and Bluetooth both use vendor 054c, product 0ce6.
+# Event nodes stay readable by the input group. This does not pair the controller.
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ce6", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ce6", MODE="0660", GROUP="input"

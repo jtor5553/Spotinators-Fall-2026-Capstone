@@ -1,14 +1,16 @@
 [Unit]
 Description=Spot Cone Placement Controller
-After=network-online.target
-Wants=network-online.target
+After=network-online.target bluetooth.target
+Wants=network-online.target bluetooth.target
 
 [Service]
 Type=simple
 # Replace this user and the paths before installing.
+# Spot stays in mock mode until config.yaml is changed on purpose.
 User=REPLACE_WITH_JETSON_USERNAME
+SupplementaryGroups=input bluetooth
 WorkingDirectory=/home/REPLACE_WITH_JETSON_USERNAME/spot_cone_controller
-ExecStart=/usr/bin/python3 /home/REPLACE_WITH_JETSON_USERNAME/spot_cone_controller/main.py
+ExecStart=/home/REPLACE_WITH_JETSON_USERNAME/spot_cone_controller/.venv/bin/python main.py --gamepad
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGTERM

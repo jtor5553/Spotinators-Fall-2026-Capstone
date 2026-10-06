@@ -80,7 +80,11 @@ def test_watchdog_stops_stale_motion(tmp_path):
 
 def test_password_is_not_loaded_from_config(tmp_path):
     path = tmp_path / "secret.yaml"
-    path.write_text("spot:\n  hostname: 10.1.1.1\n  username: ada\n  password: secret\n", encoding="utf-8")
+    path.write_text(
+        "system:\n  operator_file: config/no-such-operator.yaml\n"
+        "spot:\n  hostname: 10.1.1.1\n  username: ada\n  password: secret\n",
+        encoding="utf-8",
+    )
     config = load_config(path)
     assert config["spot"]["hostname"] == "10.1.1.1"
     assert "password" not in config["spot"]

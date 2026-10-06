@@ -4,6 +4,8 @@
 
 set -u
 
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
 hr() {
   printf '%s\n' "==================================="
 }
@@ -228,6 +230,85 @@ else
   BLUEZ="NOT INSTALLED"
 fi
 
+in_group() {
+  local group="$1"
+  local name
+  for name in $USER_GROUPS; do
+    if [ "$name" = "$group" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+USER_GROUPS="$(id -nG 2>/dev/null || true)"
+if in_group input; then
+  INPUT_GROUP="YES"
+else
+  INPUT_GROUP="NO"
+fi
+if in_group bluetooth; then
+  BLUETOOTH_GROUP="YES"
+else
+  BLUETOOTH_GROUP="NO"
+fi
+
+if [ -d /sys/module/hid_playstation ]; then
+  HID_PLAYSTATION="LOADED"
+elif have modinfo && modinfo hid-playstation >/dev/null 2>&1; then
+  HID_PLAYSTATION="AVAILABLE, not loaded yet"
+else
+  HID_PLAYSTATION="NOT FOUND"
+fi
+
+evdev_import() {
+  local python_bin="$1"
+  if [ ! -x "$python_bin" ]; then
+    printf '%s\n' "NO PYTHON"
+    return 0
+  fi
+  if "$python_bin" -c "import evdev" >/dev/null 2>&1; then
+    printf '%s\n' "IMPORTABLE"
+  else
+    printf '%s\n' "NOT IMPORTABLE"
+  fi
+}
+
+EVDEV_SYSTEM="$(evdev_import "$(command -v python3 2>/dev/null || true)")"
+VENV_PYTHON="$SCRIPT_DIR/../.venv/bin/python"
+if [ -x "$VENV_PYTHON" ]; then
+  EVDEV_VENV="$(evdev_import "$VENV_PYTHON")"
+else
+  EVDEV_VENV="NO VENV"
+fi
+
+dualsense_nodes() {
+  if [ ! -r /proc/bus/input/devices ]; then
+    return 0
+  fi
+  awk '
+    /^N: Name=/ {
+      name = $0
+      sub(/^N: Name="/, "", name)
+      sub(/"$/, "", name)
+      lower = tolower(name)
+      reject = index(lower, "motion sensors") || index(lower, "touchpad")
+      keep = !reject && (index(lower, "dualsense") || index(lower, "wireless controller"))
+    }
+    /^H: Handlers=/ && keep {
+      print name
+      keep = 0
+    }
+  ' /proc/bus/input/devices
+}
+
+DUALSENSE_NODES="$(dualsense_nodes || true)"
+if [ -n "$DUALSENSE_NODES" ]; then
+  DUALSENSE_NODE="$DUALSENSE_NODES"
+else
+  DUALSENSE_NODE="NOT FOUND"
+fi
+
 hr
 printf '%s\n' "Jetson System Check"
 hr
@@ -267,6 +348,16 @@ printf 'Bluetooth adapter: %s\n' "$BLUETOOTH"
 if [ "$BLUETOOTH" = "NOT FOUND" ] && [ "$BLUEZ" = "NOT INSTALLED" ]; then
   printf '  bluez is not installed, and the kernel did not expose an hci or rfkill Bluetooth device\n'
 fi
+printf 'hid-playstation: %s\n' "$HID_PLAYSTATION"
+if [ "$HID_PLAYSTATION" = "NOT FOUND" ]; then
+  printf '  Bluetooth DualSense will not appear. Do not continue the PS5 steps.\n'
+  printf '  JetPack 6 includes this module. JetPack 5 usually does not.\n'
+fi
+printf 'input group: %s\n' "$INPUT_GROUP"
+printf 'bluetooth group: %s\n' "$BLUETOOTH_GROUP"
+printf 'evdev (system python3): %s\n' "$EVDEV_SYSTEM"
+printf 'evdev (venv): %s\n' "$EVDEV_VENV"
+printf 'DualSense gamepad node: %s\n' "$DUALSENSE_NODE"
 printf '\n'
 printf 'IP addresses:\n'
 if [ -n "$ETH_DETAILS$WIFI_DETAILS$OTHER_DETAILS" ]; then
@@ -353,6 +444,33 @@ run_capture bluetoothctl show
 
 printf '\n----- lsusb -----\n'
 run_capture lsusb
+
+printf '\n----- hid-playstation -----\n'
+if [ -d /sys/module/hid_playstation ]; then
+  printf 'LOADED\n'
+elif have modinfo; then
+  modinfo hid-playstation 2>&1 || true
+else
+  printf 'COMMAND NOT FOUND: modinfo\n'
+fi
+
+printf '\n----- user groups -----\n'
+printf '%s\n' "${USER_GROUPS:-UNKNOWN}"
+
+printf '\n----- evdev import -----\n'
+printf 'system: %s\n' "$EVDEV_SYSTEM"
+printf 'venv: %s\n' "$EVDEV_VENV"
+
+printf '\n----- /proc/bus/input/devices DualSense names -----\n'
+if [ -r /proc/bus/input/devices ]; then
+  if [ -n "$DUALSENSE_NODES" ]; then
+    printf '%s\n' "$DUALSENSE_NODES"
+  else
+    printf 'NOT FOUND\n'
+  fi
+else
+  printf 'UNAVAILABLE\n'
+fi
 
 printf '\n----- /sys/class/bluetooth -----\n'
 if [ -d /sys/class/bluetooth ]; then
