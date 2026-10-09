@@ -14,6 +14,7 @@ EV_KEY = 0x01
 EV_ABS = 0x03
 ABS_X = 0x00
 ABS_Y = 0x01
+ABS_Z = 0x02
 ABS_RX = 0x03
 ABS_RY = 0x04
 ABS_RZ = 0x05
@@ -224,7 +225,9 @@ class DualSenseController:
     def _handle(self, event, device, left, right, analog_r2, layout):
         if event.type == EV_ABS:
             info = device.absinfo(event.code)
-            return apply_axis_event(self.state, event.code, event.value, info, left, right, analog_r2)
+            return apply_axis_event(
+                self.state, event.code, event.value, info, left, right, analog_r2, layout
+            )
         if event.type == EV_KEY:
             apply_key_event(self.state, event.code, event.value, analog_r2, layout)
         return analog_r2
@@ -255,16 +258,41 @@ def controller_absent_message(permission_denied):
     return NOT_FOUND_MESSAGE
 
 
-def apply_axis_event(state, code, value, info, left, right, analog_r2):
-    if code == ABS_X:
+def axis_codes_for_layout(layout):
+    """Stick and trigger axes for the driver that created the event node.
+
+    hid-playstation names the right stick ABS_RX/ABS_RY and R2 ABS_RZ.
+    hid-generic keeps Sony's report order (X, Y, Z, Rz, Rx, Ry), so the
+    right stick is ABS_Z/ABS_RZ and the right trigger is ABS_RY.
+    """
+    if layout == GENERIC_LAYOUT:
+        return {
+            "left_x": ABS_X,
+            "left_y": ABS_Y,
+            "right_x": ABS_Z,
+            "right_y": ABS_RZ,
+            "r2": ABS_RY,
+        }
+    return {
+        "left_x": ABS_X,
+        "left_y": ABS_Y,
+        "right_x": ABS_RX,
+        "right_y": ABS_RY,
+        "r2": ABS_RZ,
+    }
+
+
+def apply_axis_event(state, code, value, info, left, right, analog_r2, layout=PLAYSTATION_LAYOUT):
+    codes = axis_codes_for_layout(layout)
+    if code == codes["left_x"]:
         left[0] = _norm_axis(value, info)
-    elif code == ABS_Y:
+    elif code == codes["left_y"]:
         left[1] = -_norm_axis(value, info)
-    elif code == ABS_RX:
+    elif code == codes["right_x"]:
         right[0] = _norm_axis(value, info)
-    elif code == ABS_RY:
+    elif code == codes["right_y"]:
         right[1] = -_norm_axis(value, info)
-    elif code == ABS_RZ:
+    elif code == codes["r2"]:
         state.set_r2(_norm_trigger(value, info))
         analog_r2 = True
     state.set_left(left[0], left[1])

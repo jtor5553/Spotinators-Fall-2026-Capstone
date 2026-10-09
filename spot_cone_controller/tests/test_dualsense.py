@@ -2,9 +2,10 @@ from controller.controller_state import ControllerState
 from controller.dualsense import (
     ABS_RX,
     ABS_RY,
+    ABS_RZ,
     ABS_X,
     ABS_Y,
-    ABS_RZ,
+    ABS_Z,
     BTN_EAST,
     BTN_GAMEPAD,
     BTN_NORTH,
@@ -64,6 +65,39 @@ def test_r2_button_is_fallback_when_analog_axis_is_absent():
     assert state.get_r2() == 1.0
     apply_key_event(state, BTN_TR2, 0, analog_r2=False)
     assert state.get_r2() == 0.0
+
+
+def test_playstation_driver_uses_rx_ry_for_the_right_stick():
+    state = ControllerState()
+    left = [0.0, 0.0]
+    right = [0.0, 0.0]
+    info = _AxisInfo(0, 255)
+    apply_axis_event(state, ABS_RX, 255, info, left, right, False)
+    apply_axis_event(state, ABS_RY, 0, info, left, right, False)
+    assert state.get_right_stick()[0] > 0.9
+    assert state.get_right_stick()[1] > 0.9
+    analog = apply_axis_event(state, ABS_RZ, 255, info, left, right, False)
+    assert analog is True
+    assert state.get_r2() == 1.0
+
+
+def test_generic_driver_uses_z_rz_for_the_right_stick():
+    state = ControllerState()
+    left = [0.0, 0.0]
+    right = [0.0, 0.0]
+    info = _AxisInfo(0, 255)
+    apply_axis_event(state, ABS_Z, 255, info, left, right, False, "generic")
+    apply_axis_event(state, ABS_RZ, 0, info, left, right, False, "generic")
+    assert state.get_right_stick()[0] > 0.9
+    assert state.get_right_stick()[1] > 0.9
+    # Triggers sit on ABS_RX/ABS_RY under hid-generic. They must not move the stick.
+    analog = apply_axis_event(state, ABS_RX, 255, info, left, right, False, "generic")
+    assert analog is False
+    assert state.get_right_stick() == (right[0], right[1])
+    analog = apply_axis_event(state, ABS_RY, 255, info, left, right, analog, "generic")
+    assert analog is True
+    assert state.get_r2() == 1.0
+    assert state.get_right_stick()[0] > 0.9
 
 
 def test_analog_r2_stays_when_digital_trigger_is_released():
