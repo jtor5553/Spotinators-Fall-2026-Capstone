@@ -15,14 +15,14 @@ Read the safety rules below before either computer is connected to the real robo
 
 ## Safety
 
-- The program starts disarmed. The motor starts off.
-- Restarting the program does not continue an old move or an old motor command.
+- Driving starts disabled. The motor starts off.
+- If a saved IP, username, and password are present, starting the program connects to the real robot, takes the lease, and stands. It does not continue an old move or an old motor command.
 - Sticks do nothing until Spot is standing and driving is enabled.
 - If the gamepad disconnects, Spot stops and cone drops are disabled.
 - Stop and Emergency stop are different controls. Emergency stop has no confirmation question.
 - The software E-stop does not replace Spot's physical E-stop, or the mushroom E-stop on the trailer.
 - Do the first real tests in a closed lot, not in traffic.
-- The Spot password is typed on the page and kept in memory. Do not put it in `config.yaml`.
+- The Spot password can be remembered in `config/operator.yaml`. Do not put it in `config.yaml`.
 
 Speed limits, the button list, and what to do when a screen looks wrong are in the setup guide for the computer you are using.
 
@@ -37,7 +37,7 @@ spot_cone_controller/     the program
   controller/             stick mapping, DualSense reader, Windows gamepad reader
   spot/                   real Spot connection
   dispenser/              cone motor
-  config/                 settings. Do not store the Spot password here.
+  config/                 settings. Do not store the Spot password in config.yaml.
 ```
 
 The page and the gamepad both send requests to one controller. That controller decides what is allowed. Autonomy, GPS routes, and automatic cone spacing are not in this version.

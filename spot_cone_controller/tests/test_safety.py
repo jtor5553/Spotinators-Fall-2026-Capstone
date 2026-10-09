@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from core.config import load_config
+from core.config import clear_operator_identity, load_config, save_operator_identity
 from tests.conftest import make_controller
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -88,7 +88,38 @@ def test_password_is_not_loaded_from_config(tmp_path):
     config = load_config(path)
     assert config["spot"]["hostname"] == "10.1.1.1"
     assert "password" not in config["spot"]
+    assert config["saved_password"] == ""
     assert config["_password_in_config"] is True
+
+
+def test_operator_file_remembers_password(tmp_path):
+    operator = tmp_path / "operator.yaml"
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        f"system:\n  operator_file: {operator}\n"
+        "spot:\n  hostname: 10.1.1.1\n  username: ada\n  password: from-config\n",
+        encoding="utf-8",
+    )
+    operator.write_text(
+        "spot:\n  hostname: 10.2.2.2\n  username: ada\n  password: remembered\n",
+        encoding="utf-8",
+    )
+    config = load_config(config_path)
+    assert config["spot"]["hostname"] == "10.2.2.2"
+    assert config["spot"]["username"] == "ada"
+    assert "password" not in config["spot"]
+    assert config["saved_password"] == "remembered"
+    assert config["_password_in_config"] is True
+    save_operator_identity(config, "10.3.3.3", "bob", "new-secret")
+    reloaded = load_config(config_path)
+    assert reloaded["spot"]["hostname"] == "10.3.3.3"
+    assert reloaded["spot"]["username"] == "bob"
+    assert reloaded["saved_password"] == "new-secret"
+    assert "password" not in reloaded["spot"]
+    clear_operator_identity(config)
+    cleared = load_config(config_path)
+    assert cleared["saved_password"] == ""
+    assert cleared["spot"]["hostname"] == "10.1.1.1"
 
 
 def test_gui_assets_are_local():
@@ -99,8 +130,10 @@ def test_gui_assets_are_local():
         assert banned not in text
 
 
-def test_service_restarts_without_resuming_motion():
+def test_service_restarts_without_resuming_driving():
     text = (ROOT / "deploy" / "spot-cone-controller.service").read_text(encoding="utf-8")
     assert "Restart=on-failure" in text
     assert "KillSignal=SIGTERM" in text
-    assert "stand" not in text.lower()
+    assert "--gamepad" not in text
+    assert "--real" not in text
+    assert "Enable driving" in text

@@ -18,4 +18,7 @@ def make_controller(tmp_path, dispenser_enabled=True):
     config["logging"]["to_console"] = False
     config["logging"]["directory"] = str(tmp_path)
     config["_paths"]["operator"] = str(Path(tmp_path) / "operator.yaml")
+    config["spot"]["hostname"] = ""
+    config["spot"]["username"] = ""
+    config["saved_password"] = ""
     return AppController(config, verbose=False)

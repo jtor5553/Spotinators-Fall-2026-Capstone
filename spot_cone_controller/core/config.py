@@ -1,4 +1,4 @@
-"""Load defaults, then the operator config. Passwords are never kept."""
+"""Load defaults, then the operator config. config.yaml never keeps a password."""
 
 import copy
 from pathlib import Path
@@ -39,6 +39,7 @@ def load_config(config_path=None):
     config = deep_merge(defaults, user)
     config["spot"].pop("password", None)
     config["_password_in_config"] = password_in_config
+    config["saved_password"] = ""
     config["_paths"] = {"root": str(ROOT), "config": str(user_path)}
 
     operator_path = ROOT / config["system"].get("operator_file", "config/operator.yaml")
@@ -49,15 +50,28 @@ def load_config(config_path=None):
             config["spot"]["hostname"] = str(saved["hostname"])
         if saved.get("username"):
             config["spot"]["username"] = str(saved["username"])
+        if saved.get("password"):
+            config["saved_password"] = str(saved["password"])
     return config
 
 
-def save_operator_identity(config, hostname, username):
-    """Remember the Spot IP and username. The password is not written."""
+def save_operator_identity(config, hostname, username, password):
+    """Remember the Spot IP, username, and password in the operator file."""
     path = Path(config["_paths"]["operator"])
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"spot": {"hostname": hostname, "username": username}}
+    payload = {"spot": {"hostname": hostname, "username": username, "password": password}}
     with open(path, "w", encoding="utf-8") as handle:
         yaml.safe_dump(payload, handle, sort_keys=False)
     config["spot"]["hostname"] = hostname
     config["spot"]["username"] = username
+    config["saved_password"] = password
+
+
+def clear_operator_identity(config):
+    """Forget a remembered Spot IP, username, and password."""
+    path = Path(config["_paths"]["operator"])
+    if path.is_file():
+        path.unlink()
+    config["spot"]["hostname"] = ""
+    config["spot"]["username"] = ""
+    config["saved_password"] = ""

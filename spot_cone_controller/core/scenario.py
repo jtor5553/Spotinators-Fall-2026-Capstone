@@ -26,6 +26,10 @@ def run_scenario(verbose=False):
     config["logging"]["to_console"] = False
     config["logging"]["directory"] = tempfile.mkdtemp(prefix="spot-cone-")
     config["_paths"]["operator"] = config["logging"]["directory"] + "/operator.yaml"
+    config["spot"]["hostname"] = ""
+    config["spot"]["username"] = ""
+    config["saved_password"] = ""
+    config["_skip_auto_start"] = True
     app = AppController(config, verbose=verbose)
     app.startup()
 

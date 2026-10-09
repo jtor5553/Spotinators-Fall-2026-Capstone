@@ -50,18 +50,22 @@ def create_app(controller):
 
     @app.post("/api/connect")
     async def connect(payload: dict):
+        mock = payload.get("mock", None)
+        if mock is not None:
+            mock = bool(mock)
         return _result(
             controller.connect_spot(
                 payload.get("hostname", ""),
                 payload.get("username", ""),
                 payload.get("password", ""),
                 remember=bool(payload.get("remember", False)),
+                mock=mock,
             )
         )
 
-    @app.post("/api/disconnect")
-    def disconnect():
-        return _result(controller.disconnect_spot())
+    @app.post("/api/signout")
+    def sign_out():
+        return _result(controller.sign_out())
 
     @app.post("/api/stand")
     def stand():

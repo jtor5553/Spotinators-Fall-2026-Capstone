@@ -87,8 +87,10 @@ Save the whole output. Read these lines before continuing:
 This run does not move Spot and does not power the cone motor.
 
 ```bash
-.venv/bin/python main.py --mock-dispenser
+.venv/bin/python main.py --mock --mock-dispenser
 ```
+
+`--mock` keeps this run in practice. It does not stand Spot even if a password was remembered. The gamepad is still read.
 
 Leave that terminal open. On the Jetson, open a browser to:
 
@@ -96,8 +98,8 @@ http://127.0.0.1:8000
 
 The startup text should include `Mode: MOCK` and `Dispenser: READY`. Then:
 
-1. Type any numbers into Robot IP. Mock mode does not use a real address. The username can stay `user2`.
-2. Leave the password blank and press **Connect to Spot**.
+1. Check **Mock mode**. Practice does not use a real address.
+2. Type any numbers into Robot IP. The username can stay `user2`. Leave the password blank and press **Connect to Spot**.
 3. Press **Stand**, then **Sit**, then **Stop**.
 4. Press and hold **Hold to drop cone** for half a second. The count goes from 4 to 3. Holding longer does not drop a second cone.
 5. Press **Emergency stop**. The page says EMERGENCY STOP ACTIVE immediately. Stand is refused until you press **Reset E-stop**.
@@ -176,19 +178,19 @@ bash scripts/system_check.sh
 8. Start practice with the real controller. Spot and the cone motor stay mocked:
 
 ```bash
-.venv/bin/python main.py --mock-dispenser --gamepad
+.venv/bin/python main.py --mock --mock-dispenser
 ```
 
 Open http://127.0.0.1:8000. The controller card should show the DualSense name, not a mock controller. Stick numbers should move before you enable driving. Then:
 
-1. Type any Robot IP, leave the password blank, and press **Connect to Spot**.
+1. Check **Mock mode**. Type any Robot IP, leave the password blank, and press **Connect to Spot**.
 2. Press **Stand**, then **Enable driving**.
 3. Push the left stick to walk and the right stick to turn. Releasing the sticks stops.
 4. Pull R2. **Boost** should show Held with a percent.
 5. Hold Cross for half a second to drop one cone.
 6. R1 stands, L1 sits, and Options stops.
 
-Startup still says `Mode: MOCK`. `--gamepad` turns the mock controller off for that run. Setting `controller.mock: false` in `config/config.yaml` does the same thing on every start. `--mock` forces the fake controller even if `--gamepad` is also present.
+Startup still says `Mode: MOCK`. The real gamepad is read on every start. `--mock` selects practice Spot and does not switch back to the fake controller. `controller.mock: false` in `config/config.yaml` is the default.
 
 The Search paired button on the page only lists controllers Linux already knows. It does not pair a new one.
 
@@ -208,17 +210,17 @@ Do this only after mock Stand, Sit, Stop, and Emergency stop have been practiced
 3. Start the program so it will use the real robot. Keep the dispenser off:
 
 ```bash
-.venv/bin/python main.py --real --gamepad
+.venv/bin/python main.py
 ```
 
-`--real` sets mock mode off for that run. `--mock` still forces practice mode if both are present. You can instead set `system.mock_mode: false` in `config/config.yaml`. Do that only when a supervised test is the goal. The boot service in step 10 does not pass `--real`, so a crash restart stays in mock mode until that file is changed.
+Leave **Mock mode** unchecked. `--mock` forces practice mode for that run and skips the saved-credential startup.
 
-4. Open the page. The username starts as `user2`. Type Spot's IP and password, then press **Connect to Spot**. Check **Remember IP and username on this computer** if the next start should fill those two fields in. That writes only the IP and username to `config/operator.yaml` on that Jetson. The password is cleared from the page after each attempt.
-5. Confirm the battery and posture. Then press **Stand**, **Sit**, and **Stop**.
+4. Open the page. The username starts as `user2`. Type Spot's IP and password, then press **Connect to Spot**. Check **Remember IP, username, and password on this computer** if the next time the program starts should connect, take the lease, and stand. That writes all three to `config/operator.yaml` on that Jetson. This Connect does not stand by itself.
+5. Confirm the battery and posture. Then press **Stand**, **Sit**, and **Stop**. **Sign out** powers the motors off, releases the lease, and returns to the login page. The robot stands again the next time the program starts, if the remembered identity is still there. Driving stays off until **Enable driving**.
 
 A failed connection stays on the page. The usual causes are a disconnected Ethernet cable, the wrong IP, or the wrong password.
 
-Connecting registers this program as Spot's software E-stop endpoint and allows motion. A hardware E-stop still latches the page until that button is released and you press **Reset E-stop**. Stand is the step that takes control of Spot. If Spot drops the control lease, the page says so. Press **Stand** to take control again.
+Connecting registers this program as Spot's software E-stop endpoint and allows motion. A hardware E-stop still latches the page until that button is released and you press **Reset E-stop**. A process start with a remembered password takes the lease and stands. If Spot drops the control lease, the page says so. Press **Stand** to take control again.
 
 After Stop, or after the controller disconnects, press **Resume** and then **Enable driving** before the sticks will move Spot again.
 
@@ -333,7 +335,7 @@ Replace `REPLACE_WITH_JETSON_USERNAME` in the `User` line and in both paths. The
 /home/YOUR_USER/Spotinators-Fall-2026-Capstone/spot_cone_controller
 ```
 
-The service waits for Bluetooth, runs the virtualenv Python with `--gamepad`, and adds the `input` and `bluetooth` groups. It does not pass `--real` or `--mock-dispenser`. Spot stays in mock mode until `mock_mode` is changed in `config.yaml`. A crash restart comes back disarmed, with the motor off.
+The service waits for Bluetooth, runs the virtualenv Python, and adds the `input` and `bluetooth` groups. It reads the real gamepad on every start. It does not pass `--mock` or `--mock-dispenser`. If `config/operator.yaml` has an IP, username, and password, a start connects to the real robot, takes the lease, and stands. Driving stays disabled, and the cone motor stays off unless the dispenser was enabled in `config.yaml`.
 
 ```bash
 sudo cp deploy/spot-cone-controller.service /etc/systemd/system/
@@ -362,14 +364,14 @@ The usual causes are a username or path that was not replaced, a virtual environ
 
 | What you see | What to do |
 | --- | --- |
-| `Mode: MOCK` | This is practice mode. Set `mock_mode: false`, or start with `--real`, only when Spot is connected on purpose. |
+| `Mode: MOCK` | This is practice mode. Leave **Mock mode** unchecked to use the real robot. Start with `--mock` when this run must not stand a remembered robot. |
 | Dispenser says DISABLED | Start with `--mock-dispenser`, or set `dispenser.enabled: true` for a mock practice. |
 | The page does not open | The terminal or the systemd service must still be running `main.py`. On the Jetson use http://127.0.0.1:8000. From the tablet, use the Jetson's `192.168.80` address and port 8000 while the tablet is on Spot's Wi-Fi. |
 | Only walk and Stand work | Update to this version and restart `main.py`. On the controller card, R1 should say Held when you press it, L1 when you press sit, and Options when you press stop. Right-stick left and right turns. R2 is boost. Hold Cross for half a second to drop one cone. |
 | `evdev (venv): NOT IMPORTABLE` | From `spot_cone_controller`, repeat step 3. |
 | `hid-playstation: NOT FOUND` | Bluetooth DualSense will not appear. Do not continue the PS5 steps. |
 | DualSense is present but cannot be read | Add the user to the `input` group, install `deploy/99-dualsense.rules`, then log out and back in. |
-| DualSense not found | Pair it once, trust it, and start with `--gamepad`. The program ignores motion-sensor and touchpad nodes. |
+| DualSense not found | Pair it once and trust it, then start the program again. The program ignores motion-sensor and touchpad nodes. |
 | Sticks move on the card but Spot stays still | Press Stand, then Enable driving. After Stop, press Resume and then Enable driving again. |
 | Boost stays Released | Pull R2. |
 | SDK is not installed | Run `.venv/bin/python -m pip install bosdyn-client` while the Jetson has internet. |

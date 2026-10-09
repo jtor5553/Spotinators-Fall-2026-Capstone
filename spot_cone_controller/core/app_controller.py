@@ -8,7 +8,7 @@ from autonomy.manager import AutonomyManager
 from controller.dualsense import DualSenseController, paired_controllers
 from controller.mappings import command_from_sticks
 from controller.xinput_pad import XInputController
-from core.config import save_operator_identity
+from core.config import clear_operator_identity, save_operator_identity
 from core.events import EventLog
 from core.exceptions import SpotConnectionError
 from core.state import DispenserState, SystemState
@@ -75,11 +75,11 @@ class AppController:
         self.events.add("SYSTEM START")
         self.dispenser.initialize()
         self.watchdog = Watchdog(self.config, self.spot.stop, self.dispenser.motor)
-        if not self.config["controller"].get("mock", True):
-            self.gamepad.start()
+        self.gamepad.start()
         self.safety.motion_allowed = False
         self.state = SystemState.DISCONNECTED
         self.last_error = ""
+        self._auto_start_robot()
 
     def start_background(self):
         self.startup()
@@ -135,16 +135,24 @@ class AppController:
                 self._log_exception("control loop error")
                 self._enter_estop_locked("SOFTWARE FAULT")
 
-    def connect_spot(self, hostname, username, password, remember=False):
+    def connect_spot(self, hostname, username, password, remember=False, mock=None):
         with self._lock:
             hostname = (hostname or "").strip()
             username = (username or "").strip() or "user2"
+            password = password or ""
+            if getattr(self.spot, "connected", False):
+                return False, "Sign out before connecting again."
             if self.state == SystemState.ESTOP:
                 return False, "Reset the E-stop before connecting."
             if not hostname:
                 return False, "Robot IP is required."
-            if not self.config["system"].get("mock_mode", True) and not password:
+            real_connect = mock is False or (
+                mock is None and not self.config["system"].get("mock_mode", True)
+            )
+            if real_connect and not password:
                 return False, "Password is required."
+            if mock is not None:
+                self._use_spot_client_locked(bool(mock))
             self.events.add("SPOT CONNECTION ATTEMPT")
             try:
                 self.spot.connect(hostname, username, password)
@@ -162,8 +170,14 @@ class AppController:
             sources = visual_sources(self.spot.list_cameras())
             self.selected_camera = prefer_visual_source(sources)
             if remember:
-                save_operator_identity(self.config, hostname, username)
+                save_operator_identity(self.config, hostname, username, password)
+            else:
+                clear_operator_identity(self.config)
             return True, "Connected."
+
+    def sign_out(self):
+        """Stop, power the motors off, release the lease, and leave Spot disconnected."""
+        return self.disconnect_spot()
 
     def disconnect_spot(self):
         with self._lock:
@@ -340,6 +354,7 @@ class AppController:
                 "commands": self._command_flags(),
                 "saved_hostname": self.config["spot"].get("hostname") or "",
                 "saved_username": self.config["spot"].get("username") or "",
+                "saved_password": "" if self.spot.connected else (self.config.get("saved_password") or ""),
                 "autonomy": "NOT IMPLEMENTED",
             }
 
@@ -742,13 +757,42 @@ class AppController:
             f"incorrect Spot IP, incorrect credentials. {text}"
         )
 
+    def _auto_start_robot(self):
+        """Connect, take the lease, and stand when a full identity was remembered."""
+        if self.config.get("_skip_auto_start"):
+            return
+        hostname = (self.config["spot"].get("hostname") or "").strip()
+        username = (self.config["spot"].get("username") or "").strip()
+        password = self.config.get("saved_password") or ""
+        if not hostname or not username or not password:
+            return
+        ok, _message = self.connect_spot(
+            hostname, username, password, remember=True, mock=False
+        )
+        if not ok:
+            return
+        self.stand()
+        self.safety.motion_allowed = False
+
+    def _use_spot_client_locked(self, mock):
+        if self.spot.connected:
+            return
+        want_mock = bool(mock)
+        self.config["system"]["mock_mode"] = want_mock
+        if isinstance(self.spot, MockSpot) == want_mock:
+            return
+        self.spot = self._build_spot()
+        self._spot_cache = self.spot.status()
+        if self.watchdog is not None:
+            self.watchdog._movement_stop = self.spot.stop
+
     def _build_spot(self):
         if self.config["system"].get("mock_mode", True):
             return MockSpot(self.config, verbose=self.verbose)
         return SpotSession(self.config)
 
     def _build_gamepad(self):
-        if self.config["controller"].get("mock", True):
+        if self.config["controller"].get("mock", False):
             return MockController()
         if sys.platform == "win32":
             return XInputController()

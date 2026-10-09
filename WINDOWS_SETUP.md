@@ -2,7 +2,7 @@
 
 This is the practice computer. A Windows PC runs the same operator page you will use on the trailer. Spot and the cone motor stay mocked here. The trailer computer is the Jetson, and that setup is in [Jetson setup](JETSON_SETUP.md).
 
-The on-screen title is **Spot Cone Placement System**. The page opens at http://127.0.0.1:8000. The Spot password is typed on the page and kept in memory. Do not put it in `config.yaml`.
+The on-screen title is **Spot Cone Placement System**. The page opens at http://127.0.0.1:8000. The Spot password is typed on the page. **Remember** stores the IP, username, and password in `config/operator.yaml`. Do not put the password in `config.yaml`.
 
 ## What you need
 
@@ -21,8 +21,10 @@ Open PowerShell in the repository folder, then run:
 cd spot_cone_controller
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
-.\.venv\Scripts\python main.py --mock-dispenser
+.\.venv\Scripts\python main.py --mock --mock-dispenser
 ```
+
+`--mock` keeps this run in practice. It does not stand Spot even if a password was remembered. The gamepad is still read.
 
 Leave that window open. In a browser, open:
 
@@ -32,8 +34,8 @@ The startup text should include `Mode: MOCK` and `Dispenser: READY`. If you star
 
 Then:
 
-1. Type any numbers into Robot IP. Mock mode does not use a real address. The username can stay `user2`.
-2. Leave the password blank and press **Connect to Spot**. **Practice without Spot** only opens the operator page. Commands still need a connection.
+1. Check **Mock mode**. Practice does not use a real address.
+2. Type any numbers into Robot IP. The username can stay `user2`. Leave the password blank and press **Connect to Spot**.
 3. Press **Stand**, then **Sit**, then **Stop**.
 4. Press and hold **Hold to drop cone** for half a second. The count goes from 4 to 3. Holding longer does not drop a second cone.
 5. Press **Emergency stop**. The page says EMERGENCY STOP ACTIVE immediately. Stand is refused until you press **Reset E-stop**.
@@ -65,19 +67,19 @@ The pad has to be in PC mode before the program starts. Android mode and DirectI
 1. Hold Home and X together until the LED flashes.
 2. Open Windows Settings, then Bluetooth and devices, then Add device.
 3. Select the pad when it appears.
-4. Start the program with the gamepad flag:
+4. Start the program:
 
 ```powershell
-.\.venv\Scripts\python main.py --mock-dispenser --gamepad
+.\.venv\Scripts\python main.py --mock --mock-dispenser
 ```
 
 Open http://127.0.0.1:8000. The controller card should say `Xbox 360 Controller`. That name is what Windows XInput reports for this pad. Stick numbers should move when you push the sticks. Pull the right trigger and **Boost** should show Held with a percent.
 
-Startup still says `Mode: MOCK`. `--gamepad` reads the real pad. `--mock` forces the fake controller even if `--gamepad` is also present.
+Startup still says `Mode: MOCK`. The real gamepad is read on every start. `--mock` selects practice Spot and does not switch back to the fake controller.
 
 Then:
 
-1. Type any Robot IP, leave the password blank, and press **Connect to Spot**.
+1. Check **Mock mode**. Type any Robot IP, leave the password blank, and press **Connect to Spot**.
 2. Press **Stand**, then **Enable driving**.
 3. Push the left stick to walk and the right stick to turn. Speed follows how far each stick is pushed. Hold the right trigger to raise the top speed. Releasing the sticks stops.
 4. Hold A for half a second to drop one cone.
@@ -101,7 +103,8 @@ The same list is on the operator page under **Controller buttons**.
 
 | Control | What it does |
 | --- | --- |
-| Stand | The robot stands. On the real Spot this is the first command that takes control. |
+| Stand | The robot stands. On a manual connect this is the first command that takes control. A process start with a remembered password stands by itself. |
+| Sign out | Powers the motors off, releases the lease, and returns to the login page. |
 | Sit | The robot sits. |
 | Stop | Speed goes to zero and the cone motor turns off. The robot stays in its current posture. |
 | Enable driving | Arms the sticks. Required after Stand, and again after Resume. |
@@ -116,14 +119,14 @@ With the right trigger released, the caps are 0.6 m/s forward, 0.4 m/s sideways,
 
 This PC does not power the cone motor and does not use the PS5 controller. Bluetooth DualSense setup, Spot's Ethernet connection, the tablet hotspot, and starting at boot are all in [Jetson setup](JETSON_SETUP.md).
 
-Leave `mock_mode: true`. Do not point this practice PC at the real robot unless a supervised test says to. If that test is on Windows, install the SDK into this same virtual environment while the PC has internet:
+Leave **Mock mode** checked for practice. Do not point this practice PC at the real robot unless a supervised test says to. If that test is on Windows, install the SDK into this same virtual environment while the PC has internet:
 
 ```powershell
 .\.venv\Scripts\python -m pip install bosdyn-client
-.\.venv\Scripts\python main.py --real
+.\.venv\Scripts\python main.py
 ```
 
-`--real` turns mock mode off for that run. `--mock` still forces practice mode if both are present. The password is still typed on the page and is not saved.
+Leave **Mock mode** unchecked, type the IP and password, and press **Connect to Spot**. Check **Remember** if the next time this program starts should connect, take the lease, and stand. Driving stays off until **Enable driving**. Start with `--mock` when a run must stay in practice even though a password is saved.
 
 ## If something looks wrong
 
@@ -133,9 +136,9 @@ Leave `mock_mode: true`. Do not point this practice PC at the real robot unless 
 | `Mode: MOCK` | This is practice mode. That is what this PC should say. |
 | Dispenser says DISABLED | Start with `--mock-dispenser`. |
 | The page does not open | The PowerShell window must still be running `main.py`. Use http://127.0.0.1:8000 on this PC. |
-| evdev is not installed | Expected on Windows. Use `--gamepad` for the PG-9083S. Do not install the Jetson requirements file here. |
-| Gamepad not found | Put the PG-9083S in PC mode (hold Home and X) and pair it again in Bluetooth settings. Restart with `--gamepad`. |
-| The controller card stays on the mock controller | You started without `--gamepad`, or you also passed `--mock`. |
+| evdev is not installed | Expected on Windows. The PG-9083S is read through XInput. Do not install the Jetson requirements file here. |
+| Gamepad not found | Put the PG-9083S in PC mode (hold Home and X) and pair it again in Bluetooth settings, then start the program again. |
+| The controller card stays on the mock controller | `controller.mock` is true in the config. The default is false. `--mock` does not select the fake controller. |
 | Sticks move on the card but the robot stays still | Press Stand, then Enable driving. After Stop, press Resume and then Enable driving again. |
 | Boost stays Released | Pull the right trigger. |
 | Emergency stop will not clear | Press Reset E-stop, then Resume, then Enable driving. |

@@ -6,11 +6,13 @@ Wants=network-online.target bluetooth.target
 [Service]
 Type=simple
 # Replace this user and the paths before installing.
-# Spot stays in mock mode until config.yaml is changed on purpose.
+# The gamepad reader starts on every boot.
+# A saved IP, username, and password connect to the real robot, take the lease, and stand.
+# Driving stays disabled until the operator presses Enable driving.
 User=REPLACE_WITH_JETSON_USERNAME
 SupplementaryGroups=input bluetooth
 WorkingDirectory=/home/REPLACE_WITH_JETSON_USERNAME/spot_cone_controller
-ExecStart=/home/REPLACE_WITH_JETSON_USERNAME/spot_cone_controller/.venv/bin/python main.py --gamepad
+ExecStart=/home/REPLACE_WITH_JETSON_USERNAME/spot_cone_controller/.venv/bin/python main.py
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGTERM

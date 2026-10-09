@@ -10,7 +10,7 @@ spot:
 
 controller:
   type: "dualsense"
-  mock: true
+  mock: false
   deadman_trigger: "R2"
   deadzone: 0.12
   r2_threshold: 0.2

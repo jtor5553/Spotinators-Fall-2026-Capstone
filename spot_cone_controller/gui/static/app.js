@@ -4,6 +4,7 @@
   var cameraTimer = null;
   var holdTimer = null;
   var sourceKey = "";
+  var credentialsApplied = false;
 
   function byId(id) {
     return document.getElementById(id);
@@ -39,26 +40,32 @@
     latest = status;
     var connected = status.spot.connection === "CONNECTED";
     byId("connect-screen").classList.toggle("hidden", connected);
-    if (connected) {
-      byId("main-screen").classList.remove("hidden");
-    }
+    byId("main-screen").classList.toggle("hidden", !connected);
+    fillSaved(status);
     byId("state-pill").textContent = status.state;
     byId("connect-status").textContent = status.spot.connection;
     byId("estop-banner").classList.toggle("hidden", !status.estop_active);
     byId("warning-banner").classList.toggle("hidden", !status.warning);
     byId("warning-banner").textContent = status.warning || "";
-    if (!byId("robot-ip").value && status.saved_hostname) {
-      byId("robot-ip").value = status.saved_hostname;
-    }
-    if (status.saved_username && byId("username").value === "user2") {
-      byId("username").value = status.saved_username;
-    }
     renderSpot(status);
     renderPad(status);
     renderDispenser(status);
     renderCommands(status);
     renderCameras(status);
     renderLog(status);
+  }
+
+  function fillSaved(status) {
+    if (status.spot.connection === "CONNECTED" || credentialsApplied) {
+      return;
+    }
+    credentialsApplied = true;
+    byId("robot-ip").value = status.saved_hostname || "";
+    byId("username").value = status.saved_username || "user2";
+    byId("password").value = status.saved_password || "";
+    byId("remember").checked = Boolean(
+      status.saved_hostname || status.saved_username || status.saved_password
+    );
   }
 
   function renderSpot(status) {
@@ -213,12 +220,9 @@
       hostname: byId("robot-ip").value,
       username: byId("username").value,
       password: byId("password").value,
-      remember: byId("remember").checked
+      remember: byId("remember").checked,
+      mock: byId("mock-mode").checked
     });
-    byId("password").value = "";
-  });
-  byId("practice-button").addEventListener("click", function () {
-    byId("main-screen").classList.remove("hidden");
   });
   byId("stand-button").addEventListener("click", function () { post("/api/stand"); });
   byId("sit-button").addEventListener("click", function () { post("/api/sit"); });
@@ -227,7 +231,10 @@
   byId("reset-estop").addEventListener("click", function () { post("/api/estop/reset"); });
   byId("arm-button").addEventListener("click", function () { post("/api/arm"); });
   byId("resume-button").addEventListener("click", function () { post("/api/resume"); });
-  byId("disconnect-button").addEventListener("click", function () { post("/api/disconnect"); });
+  byId("sign-out-button").addEventListener("click", function () {
+    credentialsApplied = false;
+    post("/api/signout");
+  });
   byId("cone-minus").addEventListener("click", function () { post("/api/cone/adjust", { delta: -1 }); });
   byId("cone-plus").addEventListener("click", function () { post("/api/cone/adjust", { delta: 1 }); });
   byId("cone-reset").addEventListener("click", function () { post("/api/cone/reset"); });
