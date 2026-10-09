@@ -40,6 +40,10 @@ class AppController:
         self.selected_camera = None
         self.camera_ok = False
         self._camera_failure_logged = False
+        self._latest_camera_frame = None
+        self._camera_frame_lock = threading.Lock()
+        self._camera_stop = threading.Event()
+        self._camera_thread = None
         self._spot_cache = self.spot.status()
         self._last_spot_poll = 0.0
         self._lock = threading.RLock()
@@ -93,11 +97,13 @@ class AppController:
         self._watch_thread.start()
 
     def shutdown(self):
+        self._camera_stop.set()
         with self._lock:
             if self._shut_down:
                 return
             self._shut_down = True
             self._stop_event.set()
+            self.selected_camera = None
             try:
                 self.spot.stop()
             except Exception:
@@ -120,6 +126,7 @@ class AppController:
                 except Exception:
                     self._log_exception("motor shutdown failed")
             self.events.add("SYSTEM SHUTDOWN")
+        self._join_camera_capture()
         if self._loop_thread and self._loop_thread.is_alive():
             self._loop_thread.join(timeout=2)
         if self._watch_thread and self._watch_thread.is_alive():
@@ -173,14 +180,17 @@ class AppController:
                 save_operator_identity(self.config, hostname, username, password)
             else:
                 clear_operator_identity(self.config)
-            return True, "Connected."
+        self._start_camera_capture()
+        return True, "Connected."
 
     def sign_out(self):
         """Stop, power the motors off, release the lease, and leave Spot disconnected."""
         return self.disconnect_spot()
 
     def disconnect_spot(self):
+        self._camera_stop.set()
         with self._lock:
+            self.selected_camera = None
             try:
                 self.spot.stop()
                 self.dispenser.stop()
@@ -190,10 +200,10 @@ class AppController:
             self.safety.motion_allowed = False
             self.safety.stop_latched = False
             self.state = SystemState.DISCONNECTED
-            self.selected_camera = None
             self._spot_cache = self.spot.status()
             self.events.add("SPOT DISCONNECTED")
-            return True, "Disconnected."
+        self._join_camera_capture()
+        return True, "Disconnected."
 
     def stand(self):
         with self._lock:
@@ -304,25 +314,21 @@ class AppController:
             self.selected_camera = name
             self._camera_failure_logged = False
             self.events.add(f"CAMERA SELECTED {name}")
-            return True, name
+        with self._camera_frame_lock:
+            self._latest_camera_frame = None
+        return True, name
 
     def camera_frame(self):
         with self._lock:
             name = self.selected_camera
-            spot = self.spot
             width = int(self.config["camera"]["width"])
             height = int(self.config["camera"]["height"])
         if not name:
             return encode_solid_png(width, height, 20, 20, 20)
-        try:
-            frame = spot.get_camera_frame(name)
-        except Exception:
-            frame = None
+        with self._camera_frame_lock:
+            frame = self._latest_camera_frame
         if not frame:
-            self._note_camera_failure()
             return encode_solid_png(width, height, 60, 20, 20)
-        self.camera_ok = True
-        self._camera_failure_logged = False
         return frame
 
     def paired_controllers(self):
@@ -346,7 +352,7 @@ class AppController:
                 "camera": {
                     "sources": visual_sources(self.spot.list_cameras()),
                     "selected": self.selected_camera,
-                    "fps": int(self.config["camera"].get("fps", 5)),
+                    "fps": int(self.config["camera"].get("fps", 10)),
                     "ok": self.camera_ok,
                 },
                 "log": self.events.recent(30),
@@ -713,6 +719,45 @@ class AppController:
         self.safety.cone_allowed = False
         self.last_error = "Motor command exceeded its time limit."
         self.events.add("MOTOR TIMEOUT")
+
+    def _start_camera_capture(self):
+        self._join_camera_capture()
+        self._camera_stop.clear()
+        self._camera_thread = threading.Thread(
+            target=self._camera_loop, name="spot-cone-camera", daemon=True
+        )
+        self._camera_thread.start()
+
+    def _join_camera_capture(self):
+        self._camera_stop.set()
+        thread = self._camera_thread
+        self._camera_thread = None
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=2)
+        with self._camera_frame_lock:
+            self._latest_camera_frame = None
+
+    def _camera_loop(self):
+        while not self._camera_stop.is_set():
+            with self._lock:
+                name = self.selected_camera
+                spot = self.spot
+                fps = max(1, min(30, int(self.config["camera"].get("fps", 10))))
+            if not name:
+                self._camera_stop.wait(0.2)
+                continue
+            try:
+                frame = spot.get_camera_frame(name)
+            except Exception:
+                frame = None
+            if frame:
+                with self._camera_frame_lock:
+                    self._latest_camera_frame = frame
+                self.camera_ok = True
+                self._camera_failure_logged = False
+            else:
+                self._note_camera_failure()
+            self._camera_stop.wait(1.0 / fps)
 
     def _note_camera_failure(self):
         self.camera_ok = False
