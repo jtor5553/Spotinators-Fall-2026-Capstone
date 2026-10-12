@@ -51,7 +51,13 @@ class SpotSession:
         self.state_client = robot.ensure_client(RobotStateClient.default_service_name)
         image_client = robot.ensure_client(ImageClient.default_service_name)
         camera_cfg = self.config["camera"]
-        self.cameras = SpotCameras(image_client, camera_cfg["width"], camera_cfg["height"])
+        self.cameras = SpotCameras(
+            image_client,
+            camera_cfg["width"],
+            camera_cfg["height"],
+            jpeg_quality=camera_cfg.get("jpeg_quality", 75),
+            resize_ratio=camera_cfg.get("resize_ratio", 1.0),
+        )
         self.connected = True
         self.release_software_estop()
         self.refresh_status()

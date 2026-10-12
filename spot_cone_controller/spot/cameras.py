@@ -26,10 +26,15 @@ def _chunk(tag, data):
 
 
 class SpotCameras:
-    def __init__(self, image_client, width, height):
+    def __init__(self, image_client, width, height, jpeg_quality=75, resize_ratio=1.0):
         self.client = image_client
         self.width = int(width)
         self.height = int(height)
+        self.jpeg_quality = max(1, min(100, int(jpeg_quality)))
+        ratio = float(resize_ratio)
+        if ratio <= 0:
+            ratio = 1.0
+        self.resize_ratio = max(0.01, min(1.0, ratio))
 
     def list_sources(self):
         if self.client is None:
@@ -55,8 +60,9 @@ class SpotCameras:
 
         request = build_image_request(
             source_name,
-            quality_percent=75,
+            quality_percent=self.jpeg_quality,
             image_format=image_pb2.Image.FORMAT_JPEG,
+            resize_ratio=self.resize_ratio,
         )
         responses = self.client.get_image([request])
         if not responses:

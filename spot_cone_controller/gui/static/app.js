@@ -2,6 +2,8 @@
   var statusUrl = "/api/status";
   var latest = null;
   var cameraTimer = null;
+  var cameraInFlight = false;
+  var cameraScheduleKey = "";
   var holdTimer = null;
   var sourceKey = "";
   var credentialsApplied = false;
@@ -154,20 +156,58 @@
   }
 
   function scheduleCamera(status) {
-    if (cameraTimer) {
-      clearInterval(cameraTimer);
-      cameraTimer = null;
-    }
-    if (!status.camera.selected) {
+    var selected = status.camera.selected || "";
+    var fps = status.camera.fps || 10;
+    var key = selected + ":" + fps;
+    if (!selected) {
+      if (cameraTimer) {
+        clearTimeout(cameraTimer);
+        cameraTimer = null;
+      }
+      cameraScheduleKey = "";
+      cameraInFlight = false;
       return;
     }
-    var fps = status.camera.fps || 5;
+    if (key === cameraScheduleKey) {
+      return;
+    }
+    cameraScheduleKey = key;
+    if (cameraTimer) {
+      clearTimeout(cameraTimer);
+      cameraTimer = null;
+    }
+    cameraInFlight = false;
     var image = byId("camera-image");
+    var delay = Math.max(100, Math.round(1000 / fps));
+
+    function armNext() {
+      if (cameraScheduleKey !== key) {
+        return;
+      }
+      cameraTimer = setTimeout(load, delay);
+    }
+
     function load() {
+      if (cameraScheduleKey !== key) {
+        return;
+      }
+      if (cameraInFlight) {
+        armNext();
+        return;
+      }
+      cameraInFlight = true;
+      image.onload = function () {
+        cameraInFlight = false;
+        armNext();
+      };
+      image.onerror = function () {
+        cameraInFlight = false;
+        armNext();
+      };
       image.src = "/api/camera/frame?t=" + Date.now();
     }
+
     load();
-    cameraTimer = setInterval(load, Math.max(100, Math.round(1000 / fps)));
   }
 
   function renderLog(status) {
