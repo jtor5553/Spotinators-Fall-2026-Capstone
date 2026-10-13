@@ -327,15 +327,17 @@ Internet is not required for the tablet.
 
 ## 12. Start when the Jetson boots
 
-Edit `deploy/spot-cone-controller.service` before copying it.
+From `spot_cone_controller`, run:
 
-Replace `REPLACE_WITH_JETSON_USERNAME` in the `User` line and in both paths. The paths must be the real `spot_cone_controller` folder. If you cloned into the home directory, that folder is:
-
-```text
-/home/YOUR_USER/Spotinators-Fall-2026-Capstone/spot_cone_controller
+```bash
+sudo bash scripts/install_boot.sh
 ```
 
+That installs `deploy/spot-cone-controller.service` with this user and this folder, enables it for every boot, and opens http://127.0.0.1:8000 in Chromium when the desktop logs in. Automatic login is already set for this Jetson, so the page comes up after a restart with nobody at the keyboard.
+
 The service waits for Bluetooth, runs the virtualenv Python, and adds the `input` and `bluetooth` groups. It reads the real gamepad on every start. It does not pass `--mock` or `--mock-dispenser`. If `config/operator.yaml` has an IP, username, and password, a start connects to the real robot, takes the lease, and stands. Driving stays disabled, and the cone motor stays off unless the dispenser was enabled in `config.yaml`.
+
+To install the service by hand, replace `REPLACE_WITH_JETSON_USERNAME` and `REPLACE_WITH_APP_DIR` in `deploy/spot-cone-controller.service`, then:
 
 ```bash
 sudo cp deploy/spot-cone-controller.service /etc/systemd/system/
@@ -343,6 +345,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now spot-cone-controller.service
 sudo systemctl status spot-cone-controller.service
 ```
+
+Copy `deploy/spot-cone-browser.desktop` to `~/.config/autostart/` and replace `REPLACE_WITH_APP_DIR` with the real `spot_cone_controller` folder so the browser still opens.
 
 If the service fails, read the last log lines:
 

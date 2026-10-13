@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Spot Cone Placement System
+Comment=Open the controller page when the desktop starts
+Exec=REPLACE_WITH_APP_DIR/scripts/open_gui_browser.sh
+Terminal=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3

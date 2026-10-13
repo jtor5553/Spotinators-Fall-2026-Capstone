@@ -11,8 +11,8 @@ Type=simple
 # Driving stays disabled until the operator presses Enable driving.
 User=REPLACE_WITH_JETSON_USERNAME
 SupplementaryGroups=input bluetooth
-WorkingDirectory=/home/REPLACE_WITH_JETSON_USERNAME/spot_cone_controller
-ExecStart=/home/REPLACE_WITH_JETSON_USERNAME/spot_cone_controller/.venv/bin/python main.py
+WorkingDirectory=REPLACE_WITH_APP_DIR
+ExecStart=REPLACE_WITH_APP_DIR/.venv/bin/python main.py
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGTERM
