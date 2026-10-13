@@ -22,7 +22,7 @@
       return response.json();
     }).then(function (payload) {
       if (payload && payload.message) {
-        byId("message-line").textContent = payload.message;
+        byId("message-line").textContent = operatorMessage(payload.message);
       }
       refresh();
     }).catch(function () {
@@ -142,6 +142,35 @@
     byId("resume-button").classList.toggle("hidden", !commands.resume);
   }
 
+  function operatorMessage(text) {
+    if (text === "Driving enabled. Hold R2 to move.") {
+      return "Driving enabled. Use the sticks to move.";
+    }
+    return text;
+  }
+
+  function cameraLabel(name) {
+    var labels = {
+      frontleft_fisheye_image: "Front left",
+      frontright_fisheye_image: "Front right",
+      left_fisheye_image: "Left",
+      right_fisheye_image: "Right",
+      back_fisheye_image: "Back",
+      front: "Front",
+      left: "Left",
+      right: "Right",
+      rear: "Back"
+    };
+    if (labels[name]) {
+      return labels[name];
+    }
+    var cleaned = String(name).replace(/_fisheye_image$/i, "").replace(/_image$/i, "").replace(/_/g, " ").trim();
+    if (!cleaned) {
+      return name;
+    }
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+
   function renderCameras(status) {
     var sources = status.camera.sources || [];
     var key = sources.join("|") + ":" + status.camera.selected;
@@ -152,7 +181,7 @@
       sources.forEach(function (name) {
         var button = document.createElement("button");
         button.type = "button";
-        button.textContent = name;
+        button.textContent = cameraLabel(name);
         button.className = name === status.camera.selected ? "action" : "secondary";
         button.addEventListener("click", function () {
           post("/api/cameras/select", { name: name });
@@ -297,19 +326,26 @@
       byId("bluetooth-list").textContent = lines.join("\n");
     });
   });
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("spot_theme", theme);
+    var label = byId("theme-label");
+    if (label) {
+      label.textContent = theme === "dark" ? "Light mode" : "Dark mode";
+    }
+  }
+
   function initTheme() {
     var storedTheme = localStorage.getItem("spot_theme");
     var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
     var currentTheme = storedTheme || (prefersDark ? "dark" : "light");
-    document.documentElement.setAttribute("data-theme", currentTheme);
+    applyTheme(currentTheme);
 
     var toggleBtn = byId("theme-toggle");
     if (toggleBtn) {
       toggleBtn.addEventListener("click", function () {
         var active = document.documentElement.getAttribute("data-theme") || "dark";
-        var next = active === "dark" ? "light" : "dark";
-        document.documentElement.setAttribute("data-theme", next);
-        localStorage.setItem("spot_theme", next);
+        applyTheme(active === "dark" ? "light" : "dark");
       });
     }
   }

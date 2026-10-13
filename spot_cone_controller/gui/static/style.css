@@ -253,16 +253,21 @@ body:has(#main-screen:not(.hidden)) .state-pill::before {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
-  padding: 0;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
   border-radius: 0;
   background: var(--toggle-bg);
   border: 1px solid var(--toggle-border);
-  color: var(--icon-fill);
+  color: var(--text-main);
   cursor: pointer;
   transition: all 0.1s ease;
-  min-height: auto;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
 }
 
 .theme-toggle:hover {
@@ -1065,7 +1070,8 @@ button:active:not(:disabled) {
   white-space: pre-wrap;
 }
 
-.controls-help summary {
+.controls-help summary,
+.log-panel summary {
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
@@ -1074,12 +1080,14 @@ button:active:not(:disabled) {
   color: var(--text-main);
 }
 
-.controls-help summary:focus {
+.controls-help summary:focus,
+.log-panel summary:focus {
   outline: 1px solid var(--text-main);
   outline-offset: 4px;
 }
 
-.controls-help details[open] summary {
+.controls-help details[open] summary,
+.log-panel details[open] summary {
   margin-bottom: 12px;
 }
 

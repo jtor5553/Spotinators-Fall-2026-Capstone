@@ -246,7 +246,7 @@ class AppController:
             self.state = SystemState.ARMED
             self.last_error = ""
             self.events.add("DRIVING ENABLED")
-            return True, "Driving enabled. Hold R2 to move."
+            return True, "Driving enabled. Use the sticks to move."
 
     def resume(self):
         with self._lock:

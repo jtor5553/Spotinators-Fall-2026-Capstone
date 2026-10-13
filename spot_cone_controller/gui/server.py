@@ -24,7 +24,10 @@ def create_app(controller):
 
     @app.get("/")
     def index():
-        return FileResponse(GUI_ROOT / "templates" / "index.html")
+        return FileResponse(
+            GUI_ROOT / "templates" / "index.html",
+            headers={"Cache-Control": "no-store"},
+        )
 
     @app.get("/favicon.ico")
     def favicon():
