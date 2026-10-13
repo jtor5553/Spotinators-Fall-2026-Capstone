@@ -1,6 +1,6 @@
 # Jetson Orin Nano setup
 
-This is the setup for the trailer computer. An NVIDIA Jetson Orin Nano runs the program. The Spot tablet is only a touchscreen. It opens the page in a browser. It does not drive the robot, and closing the tablet does not stop the program.
+This is the setup for the trailer computer. An NVIDIA Jetson Orin Nano runs the program. The Spot tablet is only a touchscreen. It opens the page in a browser. It does not drive the robot, and closing the tablet does not stop the program. To stop it, see [Stop and start the program](#stop-and-start-the-program).
 
 Do these steps in order. Stop at the first check that fails. The program starts disarmed, with the cone motor off. Leave `mock_mode: true` until a supervised test in a clear area has passed. Spot's physical E-stop, and the mushroom E-stop on the trailer, still have to cut power. The software E-stop does not replace them.
 
@@ -346,12 +346,60 @@ sudo systemctl enable --now spot-cone-controller.service
 sudo systemctl status spot-cone-controller.service
 ```
 
+Stop, start, and disable that system service with:
+
+```bash
+sudo systemctl stop spot-cone-controller.service
+sudo systemctl start spot-cone-controller.service
+sudo systemctl disable spot-cone-controller.service
+```
+
 Copy `deploy/spot-cone-browser.desktop` to `~/.config/autostart/` and replace `REPLACE_WITH_APP_DIR` with the real `spot_cone_controller` folder so the browser still opens.
 
 If the service fails, read the last log lines:
 
 ```bash
 journalctl -u spot-cone-controller.service -n 50 --no-pager
+```
+
+### Stop and start the program
+
+Closing the browser, or closing the Spot tablet, leaves the program running. On this Jetson it is a login service named `spot-cone-controller.service` for the desktop user `asl_lab`. The unit file is `~/.config/systemd/user/spot-cone-controller.service`. The process is `spot_cone_controller/.venv/bin/python main.py`. It starts when that user logs in. There is no terminal window to close.
+
+Run these commands on the Jetson, logged in as `asl_lab`. Stop sends a shutdown signal. The program powers the motors off and releases the lease.
+
+```bash
+systemctl --user stop spot-cone-controller.service
+```
+
+Start it again:
+
+```bash
+systemctl --user start spot-cone-controller.service
+```
+
+See whether it is running:
+
+```bash
+systemctl --user status spot-cone-controller.service
+```
+
+The service stays enabled, so the next login starts it again. To leave it stopped until you start it yourself:
+
+```bash
+systemctl --user disable spot-cone-controller.service
+```
+
+Turn automatic login start back on:
+
+```bash
+systemctl --user enable --now spot-cone-controller.service
+```
+
+Read its log:
+
+```bash
+journalctl --user -u spot-cone-controller.service -n 50 --no-pager
 ```
 
 The usual causes are a username or path that was not replaced, a virtual environment that was created in a different folder, or a user who is not in the `input` group.
@@ -371,6 +419,7 @@ The usual causes are a username or path that was not replaced, a virtual environ
 | `Mode: MOCK` | This is practice mode. Leave **Mock mode** unchecked to use the real robot. Start with `--mock` when this run must not stand a remembered robot. |
 | Dispenser says DISABLED | Start with `--mock-dispenser`, or set `dispenser.enabled: true` for a mock practice. |
 | The page does not open | The terminal or the systemd service must still be running `main.py`. On the Jetson use http://127.0.0.1:8000. From the tablet, use the Jetson's `192.168.80` address and port 8000 while the tablet is on Spot's Wi-Fi. |
+| The program is still running after the browser closes | Stop the login service: `systemctl --user stop spot-cone-controller.service`. See [Stop and start the program](#stop-and-start-the-program). |
 | Only walk and Stand work | Update to this version and restart `main.py`. On the controller card, R1 should say Held when you press it, L1 when you press sit, and Options when you press stop. Right-stick left and right turns. R2 is boost. Hold Cross for half a second to drop one cone. |
 | `evdev (venv): NOT IMPORTABLE` | From `spot_cone_controller`, repeat step 3. |
 | `hid-playstation: NOT FOUND` | Bluetooth DualSense will not appear. Do not continue the PS5 steps. |
