@@ -7,6 +7,7 @@
   var holdTimer = null;
   var sourceKey = "";
   var credentialsApplied = false;
+  var statusInFlight = false;
 
   function byId(id) {
     return document.getElementById(id);
@@ -30,11 +31,18 @@
   }
 
   function refresh() {
+    if (statusInFlight) {
+      return;
+    }
+    statusInFlight = true;
     fetch(statusUrl, { cache: "no-store" })
       .then(function (response) { return response.json(); })
       .then(render)
       .catch(function () {
         byId("message-line").textContent = "Waiting for the Jetson controller.";
+      })
+      .then(function () {
+        statusInFlight = false;
       });
   }
 
@@ -291,5 +299,5 @@
   });
   bindHold("drop-cone");
   refresh();
-  setInterval(refresh, 500);
+  setInterval(refresh, 100);
 })();

@@ -51,6 +51,11 @@ def test_fetch_jpeg_passes_quality_and_resize(monkeypatch):
 
     image_mod.build_image_request = build_image_request
 
+    class UnsupportedResizeRatioRequestedError(Exception):
+        pass
+
+    image_mod.UnsupportedResizeRatioRequestedError = UnsupportedResizeRatioRequestedError
+
     client_mod = types.ModuleType("bosdyn.client")
     client_mod.image = image_mod
 
@@ -88,6 +93,66 @@ def test_fetch_jpeg_passes_quality_and_resize(monkeypatch):
         "image_format": Image.FORMAT_JPEG,
         "resize_ratio": 0.5,
     }
+
+
+def test_rejected_resize_retries_at_full_size(monkeypatch):
+    captured = []
+
+    image_pb2 = types.ModuleType("bosdyn.api.image_pb2")
+
+    class Image:
+        FORMAT_JPEG = 2
+
+    image_pb2.Image = Image
+
+    api_mod = types.ModuleType("bosdyn.api")
+    api_mod.image_pb2 = image_pb2
+
+    image_mod = types.ModuleType("bosdyn.client.image")
+
+    class UnsupportedResizeRatioRequestedError(Exception):
+        pass
+
+    def build_image_request(source_name, quality_percent=75, image_format=None, resize_ratio=None, **_kwargs):
+        captured.append(resize_ratio)
+        return {"resize_ratio": resize_ratio}
+
+    image_mod.build_image_request = build_image_request
+    image_mod.UnsupportedResizeRatioRequestedError = UnsupportedResizeRatioRequestedError
+
+    client_mod = types.ModuleType("bosdyn.client")
+    client_mod.image = image_mod
+
+    bosdyn = types.ModuleType("bosdyn")
+    bosdyn.api = api_mod
+    bosdyn.client = client_mod
+
+    monkeypatch.setitem(sys.modules, "bosdyn", bosdyn)
+    monkeypatch.setitem(sys.modules, "bosdyn.api", api_mod)
+    monkeypatch.setitem(sys.modules, "bosdyn.api.image_pb2", image_pb2)
+    monkeypatch.setitem(sys.modules, "bosdyn.client", client_mod)
+    monkeypatch.setitem(sys.modules, "bosdyn.client.image", image_mod)
+
+    class FakeClient:
+        def get_image(self, requests):
+            if requests[0]["resize_ratio"] != 1.0:
+                raise UnsupportedResizeRatioRequestedError("rejected")
+
+            class ImageData:
+                data = b"\xff\xd8\xff\x00"
+
+            class Shot:
+                image = ImageData()
+
+            class Response:
+                shot = Shot()
+
+            return [Response()]
+
+    cameras = SpotCameras(FakeClient(), 640, 480, jpeg_quality=50, resize_ratio=0.5)
+    assert cameras.fetch("frontleft_fisheye_image") == b"\xff\xd8\xff\x00"
+    assert cameras.fetch("left_fisheye_image") == b"\xff\xd8\xff\x00"
+    assert captured == [0.5, 1.0, 1.0]
 
 
 def test_camera_frame_serves_buffer_without_blocking_spot(tmp_path):

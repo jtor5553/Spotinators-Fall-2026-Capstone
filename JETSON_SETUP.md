@@ -263,6 +263,8 @@ The cone count starts at 4. Use minus, plus, or Reset when the trailer is reload
 
 After Spot is connected, the page lists picture cameras and shows one at a time. Depth and projected-depth sources stay off the page. When Spot reports `frontleft_fisheye_image`, that camera is selected first. The starting size is 640 by 480 at 5 frames per second. Try 10 frames per second only if the page stays responsive. Do not assume the mock names front, left, right, and rear exist on the real robot.
 
+Leave `camera.resize_ratio` at `1.0`. This Spot refuses any other ratio, the log says `CAMERA FAILURE`, and the page lists the camera names with no picture. JPEG quality `50` is what keeps the frames small.
+
 Change the rate in `config/config.yaml` under `camera` only after the page has already shown a picture at 5 frames per second.
 
 ## 10. Open the page on the Spot tablet
@@ -420,6 +422,7 @@ The usual causes are a username or path that was not replaced, a virtual environ
 | Dispenser says DISABLED | Start with `--mock-dispenser`, or set `dispenser.enabled: true` for a mock practice. |
 | The page does not open | The terminal or the systemd service must still be running `main.py`. On the Jetson use http://127.0.0.1:8000. From the tablet, use the Jetson's `192.168.80` address and port 8000 while the tablet is on Spot's Wi-Fi. |
 | The program is still running after the browser closes | Stop the login service: `systemctl --user stop spot-cone-controller.service`. See [Stop and start the program](#stop-and-start-the-program). |
+| Camera names are listed and the picture stays blank | Set `camera.resize_ratio` to `1.0` and restart `main.py`. This Spot rejects a smaller ratio. |
 | Only walk and Stand work | Update to this version and restart `main.py`. On the controller card, R1 should say Held when you press it, L1 when you press sit, and Options when you press stop. Right-stick left and right turns. R2 is boost. Hold Cross for half a second to drop one cone. |
 | `evdev (venv): NOT IMPORTABLE` | From `spot_cone_controller`, repeat step 3. |
 | `hid-playstation: NOT FOUND` | Bluetooth DualSense will not appear. Do not continue the PS5 steps. |

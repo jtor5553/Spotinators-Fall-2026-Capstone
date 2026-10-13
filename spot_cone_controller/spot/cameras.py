@@ -56,13 +56,23 @@ class SpotCameras:
 
     def _fetch_jpeg(self, source_name):
         from bosdyn.api import image_pb2
-        from bosdyn.client.image import build_image_request
+        from bosdyn.client.image import UnsupportedResizeRatioRequestedError, build_image_request
 
+        try:
+            return self._request_jpeg(source_name, image_pb2, build_image_request, self.resize_ratio)
+        except UnsupportedResizeRatioRequestedError:
+            if self.resize_ratio == 1.0:
+                raise
+            # This robot only returns a picture at full size. Remember that for the next frame.
+            self.resize_ratio = 1.0
+            return self._request_jpeg(source_name, image_pb2, build_image_request, 1.0)
+
+    def _request_jpeg(self, source_name, image_pb2, build_image_request, resize_ratio):
         request = build_image_request(
             source_name,
             quality_percent=self.jpeg_quality,
             image_format=image_pb2.Image.FORMAT_JPEG,
-            resize_ratio=self.resize_ratio,
+            resize_ratio=resize_ratio,
         )
         responses = self.client.get_image([request])
         if not responses:
