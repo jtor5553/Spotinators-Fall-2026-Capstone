@@ -245,7 +245,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pressed: pressed })
-      }).catch(function () {});
+      }).catch(function () { });
     }
     function start(event) {
       event.preventDefault();
@@ -297,6 +297,24 @@
       byId("bluetooth-list").textContent = lines.join("\n");
     });
   });
+  function initTheme() {
+    var storedTheme = localStorage.getItem("spot_theme");
+    var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var currentTheme = storedTheme || (prefersDark ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", currentTheme);
+
+    var toggleBtn = byId("theme-toggle");
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", function () {
+        var active = document.documentElement.getAttribute("data-theme") || "dark";
+        var next = active === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        localStorage.setItem("spot_theme", next);
+      });
+    }
+  }
+
+  initTheme();
   bindHold("drop-cone");
   refresh();
   setInterval(refresh, 100);
