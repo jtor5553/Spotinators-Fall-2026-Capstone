@@ -1,18 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Spot Cone Placement System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
   <header class="top">
-    <div>
-      <p class="eyebrow">Manual mode</p>
+    <div class="header-branding">
+      <div class="mode-badge eyebrow" id="mode-badge">Manual mode</div>
       <h1>Spot Cone Placement System</h1>
     </div>
-    <div class="state-pill" id="state-pill">BOOTING</div>
+    <div class="header-actions">
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle light or dark theme"
+        title="Toggle theme">
+        <svg class="theme-icon sun-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor"
+          stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="theme-icon moon-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor"
+          stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+      <div class="state-pill" id="state-pill">BOOTING</div>
+
+      <div class="dropdown-wrapper">
+        <button id="menu-toggle" class="hamburger-btn" type="button" aria-label="Toggle settings & telemetry menu"
+          aria-expanded="false" title="Robot & Controller Settings">
+          <svg class="hamburger-icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2"
+            fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <div id="dropdown-menu" class="dropdown-menu" role="menu">
+          <div class="dropdown-section">
+            <h2>Robot</h2>
+            <p><span class="dot" id="spot-dot"></span> <span id="spot-connection">Not connected</span></p>
+            <p>Battery <strong id="spot-battery">--</strong></p>
+            <p id="spot-posture">Unknown</p>
+            <p>Motors <strong id="spot-motors">--</strong></p>
+            <p class="fine" id="spot-speed"></p>
+          </div>
+
+          <div class="dropdown-divider" role="separator">
+            <span>Controller Settings</span>
+          </div>
+
+          <div class="dropdown-section">
+            <h2>Controller</h2>
+            <p><span class="dot" id="pad-dot"></span> <span id="pad-connection">Not connected</span></p>
+            <p>Boost: <strong id="pad-r2">Released</strong></p>
+            <p>Left stick X <strong id="left-x">0.00</strong> Y <strong id="left-y">0.00</strong></p>
+            <p>Right stick X <strong id="right-x">0.00</strong> Y <strong id="right-y">0.00</strong></p>
+            <p>Cross: <strong id="button-x">Released</strong></p>
+            <p>L1: <strong id="button-lb">Released</strong> R1: <strong id="button-rb">Released</strong> Options:
+              <strong id="button-options">Released</strong></p>
+            <button id="bluetooth-button" class="secondary" type="button">Search paired</button>
+            <pre id="bluetooth-list" class="fine"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
   </header>
 
   <p class="banner hidden" id="estop-banner">EMERGENCY STOP ACTIVE</p>
@@ -21,75 +87,107 @@
 
   <section id="connect-screen" class="connect-screen">
     <div class="panel connect-card">
-      <h2>Spot connection</h2>
-      <label for="robot-ip">Robot IP</label>
-      <input id="robot-ip" type="text" inputmode="decimal" autocomplete="off">
-      <label for="username">Username</label>
-      <input id="username" type="text" autocomplete="off" value="user2">
-      <label for="password">Password</label>
-      <input id="password" type="password" autocomplete="off">
-      <label class="check"><input id="remember" type="checkbox"> Remember IP, username, and password on this computer</label>
-      <label class="check"><input id="mock-mode" type="checkbox"> Mock mode</label>
-      <button id="connect-button" class="action" type="button">Connect to Spot</button>
-      <p class="connect-status">Status: <strong id="connect-status">NOT CONNECTED</strong></p>
+      <div class="connect-header">
+        <h2>Spot connection</h2>
+        <p class="connect-subtitle">Enter robot credentials to authenticate and initialize telemetry</p>
+      </div>
+
+      <div class="form-group">
+        <label for="robot-ip">Robot IP</label>
+        <input id="robot-ip" type="text" inputmode="decimal" autocomplete="off"
+          placeholder="e.g. 192.168.80.3 or 10.1.1.1">
+      </div>
+
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input id="username" type="text" autocomplete="off" value="user2" placeholder="user2">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="off" placeholder="••••••••">
+      </div>
+
+      <div class="checkbox-group">
+        <label class="check">
+          <input id="remember" type="checkbox">
+          <span>Remember credentials on this machine</span>
+        </label>
+        <label class="check">
+          <input id="mock-mode" type="checkbox">
+          <span>Mock mode (simulate robot & dispenser)</span>
+        </label>
+      </div>
+
+      <button id="connect-button" class="action connect-btn" type="button">Connect to Spot</button>
+      <div class="connect-status-wrapper">
+        <span class="status-label">Status</span>
+        <span class="status-value" id="connect-status">NOT CONNECTED</span>
+      </div>
     </div>
   </section>
 
   <main id="main-screen" class="main hidden">
+    <!-- Tier 1 (Highest Priority): CAMERA -->
     <section class="ops">
-      <article class="panel">
-        <h2>Robot</h2>
-        <p><span class="dot" id="spot-dot"></span> <span id="spot-connection">Not connected</span></p>
-        <p>Battery <strong id="spot-battery">--</strong></p>
-        <p id="spot-posture">Unknown</p>
-        <p>Motors <strong id="spot-motors">--</strong></p>
-        <p class="fine" id="spot-speed"></p>
-      </article>
       <article class="panel camera-panel">
-        <h2>Camera</h2>
-        <img id="camera-image" alt="Selected Spot camera" width="640" height="480">
+        <div class="panel-header">
+          <h2>Camera</h2>
+        </div>
+        <div class="camera-feed-container">
+          <img id="camera-image" alt="Selected Spot camera" width="640" height="480">
+        </div>
         <div id="camera-buttons" class="camera-buttons"></div>
       </article>
-      <article class="panel">
-        <h2>Controller</h2>
-        <p><span class="dot" id="pad-dot"></span> <span id="pad-connection">Not connected</span></p>
-        <p>Boost: <strong id="pad-r2">Released</strong></p>
-        <p>Left stick X <strong id="left-x">0.00</strong> Y <strong id="left-y">0.00</strong></p>
-        <p>Right stick X <strong id="right-x">0.00</strong> Y <strong id="right-y">0.00</strong></p>
-        <p>Cross: <strong id="button-x">Released</strong></p>
-        <p>L1: <strong id="button-lb">Released</strong> R1: <strong id="button-rb">Released</strong> Options: <strong id="button-options">Released</strong></p>
-        <button id="bluetooth-button" class="secondary" type="button">Search paired</button>
-        <pre id="bluetooth-list" class="fine"></pre>
-      </article>
-      <article class="panel">
-        <h2>Cone dispenser</h2>
-        <p><span class="dot" id="cone-dot"></span> <strong id="dispenser-state">DISABLED</strong></p>
-        <p>Cones remaining: <strong id="cone-count">4</strong></p>
-        <div class="row">
-          <button id="cone-minus" class="secondary" type="button">-</button>
-          <button id="cone-reset" class="secondary" type="button">Reset to 4</button>
-          <button id="cone-plus" class="secondary" type="button">+</button>
+    </section>
+
+    <!-- Tier 2 (Middle): CONE DISPENSER & CONTROLS -->
+    <section class="unified-controls">
+      <article class="panel dispenser-panel">
+        <div class="panel-header">
+          <h2>Cone dispenser</h2>
+          <span class="dispenser-state-badge">
+            <span class="dot" id="cone-dot"></span>
+            <strong id="dispenser-state">DISABLED</strong>
+          </span>
         </div>
-        <button id="drop-cone" class="action" type="button">Hold to drop cone</button>
-        <p class="fine" id="drop-progress"></p>
-        <div class="row">
-          <button id="cone-reverse" class="secondary" type="button">Reverse 0.5s</button>
-          <button id="cone-home" class="secondary" type="button">Home</button>
+        <div class="dispenser-body">
+          <div class="cone-status-block">
+            <span class="cone-status-label">Cones remaining</span>
+            <strong id="cone-count" class="cone-count-display">4</strong>
+          </div>
+          <div class="row dispenser-row">
+            <button id="cone-minus" class="secondary" type="button" aria-label="Decrease cones">-</button>
+            <button id="cone-reset" class="secondary" type="button">Reset to 4</button>
+            <button id="cone-plus" class="secondary" type="button" aria-label="Increase cones">+</button>
+          </div>
+          <button id="drop-cone" class="action" type="button">Hold to drop cone</button>
+          <p class="fine" id="drop-progress"></p>
+          <div class="row dispenser-row">
+            <button id="cone-reverse" class="secondary" type="button">Reverse 0.5s</button>
+            <button id="cone-home" class="secondary" type="button">Home</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel commands-panel">
+        <div class="panel-header">
+          <h2>Robot Commands</h2>
+        </div>
+        <div class="commands">
+          <button id="stand-button" class="action" type="button">Stand</button>
+          <button id="sit-button" class="action" type="button">Sit</button>
+          <button id="stop-button" class="stop" type="button">Stop</button>
+          <button id="arm-button" class="action" type="button">Enable driving</button>
+          <button id="resume-button" class="action" type="button">Resume</button>
+          <button id="sign-out-button" class="secondary" type="button">Sign out</button>
+          <button id="reset-estop" class="action hidden" type="button">Reset E-stop</button>
+          <button id="estop-button" class="estop" type="button">Emergency stop</button>
         </div>
       </article>
     </section>
 
-    <section class="commands">
-      <button id="stand-button" class="action" type="button">Stand</button>
-      <button id="sit-button" class="action" type="button">Sit</button>
-      <button id="stop-button" class="stop" type="button">Stop</button>
-      <button id="arm-button" class="action" type="button">Enable driving</button>
-      <button id="resume-button" class="action" type="button">Resume</button>
-      <button id="sign-out-button" class="secondary" type="button">Sign out</button>
-      <button id="reset-estop" class="action hidden" type="button">Reset E-stop</button>
-      <button id="estop-button" class="estop" type="button">Emergency stop</button>
-    </section>
-
+    <!-- Tier 3 (Bottom): LOGS & HELP -->
     <section class="panel controls-help">
       <details>
         <summary>Controller buttons</summary>
@@ -99,13 +197,34 @@
             <h3>Xbox</h3>
             <table>
               <tbody>
-                <tr><th>Left stick</th><td>Walk. Speed follows how far you push it.</td></tr>
-                <tr><th>Right stick</th><td>Turn.</td></tr>
-                <tr><th>Right trigger</th><td>Hold to go faster.</td></tr>
-                <tr><th>Left bumper</th><td>Sit.</td></tr>
-                <tr><th>Right bumper</th><td>Stand.</td></tr>
-                <tr><th>A</th><td>Hold for half a second to drop one cone.</td></tr>
-                <tr><th>Start</th><td>Stop.</td></tr>
+                <tr>
+                  <th>Left stick</th>
+                  <td>Walk. Speed follows how far you push it.</td>
+                </tr>
+                <tr>
+                  <th>Right stick</th>
+                  <td>Turn.</td>
+                </tr>
+                <tr>
+                  <th>Right trigger</th>
+                  <td>Hold to go faster.</td>
+                </tr>
+                <tr>
+                  <th>Left bumper</th>
+                  <td>Sit.</td>
+                </tr>
+                <tr>
+                  <th>Right bumper</th>
+                  <td>Stand.</td>
+                </tr>
+                <tr>
+                  <th>A</th>
+                  <td>Hold for half a second to drop one cone.</td>
+                </tr>
+                <tr>
+                  <th>Start</th>
+                  <td>Stop.</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -113,13 +232,34 @@
             <h3>PS5</h3>
             <table>
               <tbody>
-                <tr><th>Left stick</th><td>Walk. Speed follows how far you push it.</td></tr>
-                <tr><th>Right stick</th><td>Turn.</td></tr>
-                <tr><th>R2</th><td>Hold to go faster.</td></tr>
-                <tr><th>L1</th><td>Sit.</td></tr>
-                <tr><th>R1</th><td>Stand.</td></tr>
-                <tr><th>Cross</th><td>Hold for half a second to drop one cone.</td></tr>
-                <tr><th>Options</th><td>Stop.</td></tr>
+                <tr>
+                  <th>Left stick</th>
+                  <td>Walk. Speed follows how far you push it.</td>
+                </tr>
+                <tr>
+                  <th>Right stick</th>
+                  <td>Turn.</td>
+                </tr>
+                <tr>
+                  <th>R2</th>
+                  <td>Hold to go faster.</td>
+                </tr>
+                <tr>
+                  <th>L1</th>
+                  <td>Sit.</td>
+                </tr>
+                <tr>
+                  <th>R1</th>
+                  <td>Stand.</td>
+                </tr>
+                <tr>
+                  <th>Cross</th>
+                  <td>Hold for half a second to drop one cone.</td>
+                </tr>
+                <tr>
+                  <th>Options</th>
+                  <td>Stop.</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -132,6 +272,33 @@
       <ol id="log-list"></ol>
     </section>
   </main>
+
   <script src="/static/app.js"></script>
+  <script>
+    (function () {
+      var menuToggle = document.getElementById("menu-toggle");
+      var dropdownMenu = document.getElementById("dropdown-menu");
+      if (menuToggle && dropdownMenu) {
+        menuToggle.addEventListener("click", function (event) {
+          event.stopPropagation();
+          var isOpen = dropdownMenu.classList.toggle("open");
+          menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        });
+        document.addEventListener("click", function (event) {
+          if (!dropdownMenu.contains(event.target) && !menuToggle.contains(event.target)) {
+            dropdownMenu.classList.remove("open");
+            menuToggle.setAttribute("aria-expanded", "false");
+          }
+        });
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape") {
+            dropdownMenu.classList.remove("open");
+            menuToggle.setAttribute("aria-expanded", "false");
+          }
+        });
+      }
+    })();
+  </script>
 </body>
+
 </html>
