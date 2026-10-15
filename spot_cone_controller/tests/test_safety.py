@@ -105,21 +105,28 @@ def test_operator_file_remembers_password(tmp_path):
         encoding="utf-8",
     )
     config = load_config(config_path)
+    stored = operator.read_text(encoding="utf-8")
     assert config["spot"]["hostname"] == "10.2.2.2"
     assert config["spot"]["username"] == "ada"
     assert "password" not in config["spot"]
+    assert "remembered" not in stored
     assert config["saved_password"] == "remembered"
     assert config["_password_in_config"] is True
     save_operator_identity(config, "10.3.3.3", "bob", "new-secret")
     reloaded = load_config(config_path)
+    rewritten = operator.read_text(encoding="utf-8")
+    secret = (tmp_path / "operator.secret").read_text(encoding="utf-8")
     assert reloaded["spot"]["hostname"] == "10.3.3.3"
     assert reloaded["spot"]["username"] == "bob"
     assert reloaded["saved_password"] == "new-secret"
     assert "password" not in reloaded["spot"]
+    assert "new-secret" not in rewritten
+    assert secret.strip() == "new-secret"
     clear_operator_identity(config)
     cleared = load_config(config_path)
     assert cleared["saved_password"] == ""
     assert cleared["spot"]["hostname"] == "10.1.1.1"
+    assert not (tmp_path / "operator.secret").is_file()
 
 
 def test_gui_assets_are_local():

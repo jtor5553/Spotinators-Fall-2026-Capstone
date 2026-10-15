@@ -13,15 +13,30 @@
     return document.getElementById(id);
   }
 
+  function showAccess(locked) {
+    byId("access-screen").classList.toggle("hidden", !locked);
+    if (locked) {
+      byId("connect-screen").classList.add("hidden");
+      byId("main-screen").classList.add("hidden");
+    }
+  }
+
   function post(url, body) {
     return fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body || {})
     }).then(function (response) {
+      if (response.status === 401) {
+        showAccess(true);
+        return null;
+      }
       return response.json();
     }).then(function (payload) {
-      if (payload && payload.message) {
+      if (!payload) {
+        return;
+      }
+      if (payload.message) {
         byId("message-line").textContent = operatorMessage(payload.message);
       }
       refresh();
@@ -36,8 +51,20 @@
     }
     statusInFlight = true;
     fetch(statusUrl, { cache: "no-store" })
-      .then(function (response) { return response.json(); })
-      .then(render)
+      .then(function (response) {
+        if (response.status === 401) {
+          showAccess(true);
+          return null;
+        }
+        return response.json();
+      })
+      .then(function (status) {
+        if (!status || !status.spot) {
+          return;
+        }
+        showAccess(false);
+        render(status);
+      })
       .catch(function () {
         byId("message-line").textContent = "Waiting for the Jetson controller.";
       })
@@ -72,9 +99,10 @@
     credentialsApplied = true;
     byId("robot-ip").value = status.saved_hostname || "";
     byId("username").value = status.saved_username || "user2";
-    byId("password").value = status.saved_password || "";
+    byId("password").value = "";
+    byId("password").placeholder = status.password_saved ? "Saved on this computer" : "••••••••";
     byId("remember").checked = Boolean(
-      status.saved_hostname || status.saved_username || status.saved_password
+      status.saved_hostname || status.saved_username || status.password_saved
     );
   }
 
@@ -292,6 +320,27 @@
     button.addEventListener("contextmenu", function (event) { event.preventDefault(); });
   }
 
+  byId("access-button").addEventListener("click", function () {
+    fetch("/api/access", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: byId("access-code").value })
+    }).then(function (response) {
+      return response.json().then(function (payload) {
+        return { ok: response.ok, payload: payload };
+      });
+    }).then(function (result) {
+      if (!result.ok) {
+        byId("message-line").textContent = (result.payload && result.payload.message) || "Wrong access code.";
+        return;
+      }
+      byId("access-code").value = "";
+      showAccess(false);
+      refresh();
+    }).catch(function () {
+      byId("message-line").textContent = "The Jetson did not answer. The robot program is still the controller.";
+    });
+  });
   byId("connect-button").addEventListener("click", function () {
     post("/api/connect", {
       hostname: byId("robot-ip").value,

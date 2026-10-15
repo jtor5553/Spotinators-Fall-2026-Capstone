@@ -1,5 +1,5 @@
 # Operator settings. Do not put the Spot password in this file.
-# Remember on the login page stores it in config/operator.yaml.
+# Remember stores it in config/operator.secret, which git ignores.
 
 system:
   name: "Spot Cone Placement Controller"

@@ -146,7 +146,9 @@ class AppController:
         with self._lock:
             hostname = (hostname or "").strip()
             username = (username or "").strip() or "user2"
-            password = password or ""
+            password = (password or "").strip()
+            if not password:
+                password = self.config.get("saved_password") or ""
             if getattr(self.spot, "connected", False):
                 return False, "Sign out before connecting again."
             if self.state == SystemState.ESTOP:
@@ -360,7 +362,7 @@ class AppController:
                 "commands": self._command_flags(),
                 "saved_hostname": self.config["spot"].get("hostname") or "",
                 "saved_username": self.config["spot"].get("username") or "",
-                "saved_password": "" if self.spot.connected else (self.config.get("saved_password") or ""),
+                "password_saved": bool(self.config.get("saved_password")),
                 "autonomy": "NOT IMPLEMENTED",
             }
 

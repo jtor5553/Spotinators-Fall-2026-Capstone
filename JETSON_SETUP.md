@@ -4,7 +4,7 @@ This is the setup for the trailer computer. An NVIDIA Jetson Orin Nano runs the 
 
 Do these steps in order. Stop at the first check that fails. The program starts disarmed, with the cone motor off. Leave `mock_mode: true` until a supervised test in a clear area has passed. Spot's physical E-stop, and the mushroom E-stop on the trailer, still have to cut power. The software E-stop does not replace them.
 
-The Spot password is typed on the page and kept in memory. Do not put it in `config.yaml` or in this guide.
+The Spot password is typed on the page. **Remember** stores it in `config/operator.secret`, which git ignores, and the page does not receive it again. Do not put it in `config.yaml` or in this guide. The page first asks for the operator access code printed when the program starts. That code is not the Spot password. On a Jetson that starts at boot, read it with `journalctl -u spot-cone-controller -n 80 --no-pager`.
 
 Practice on a Windows PC is in [Windows setup](WINDOWS_SETUP.md). The project overview and safety rules are in [README.md](README.md).
 
@@ -215,7 +215,7 @@ Do this only after mock Stand, Sit, Stop, and Emergency stop have been practiced
 
 Leave **Mock mode** unchecked. `--mock` forces practice mode for that run and skips the saved-credential startup.
 
-4. Open the page. The username starts as `user2`. Type Spot's IP and password, then press **Connect to Spot**. Check **Remember IP, username, and password on this computer** if the next time the program starts should connect, take the lease, and stand. That writes all three to `config/operator.yaml` on that Jetson. This Connect does not stand by itself.
+4. Open the page and type the operator access code from the terminal. The username starts as `user2`. Type Spot's IP and password, then press **Connect to Spot**. Check **Remember credentials on this machine** if the next time the program starts should connect, take the lease, and stand. That writes the IP and username to `config/operator.yaml` and the password to `config/operator.secret` on that Jetson. The password is not sent back to the page. This Connect does not stand by itself.
 5. Confirm the battery and posture. Then press **Stand**, **Sit**, and **Stop**. **Sign out** powers the motors off, releases the lease, and returns to the login page. The robot stands again the next time the program starts, if the remembered identity is still there. Driving stays off until **Enable driving**.
 
 A failed connection stays on the page. The usual causes are a disconnected Ethernet cable, the wrong IP, or the wrong password.
@@ -337,7 +337,7 @@ sudo bash scripts/install_boot.sh
 
 That installs `deploy/spot-cone-controller.service` with this user and this folder, enables it for every boot, and opens http://127.0.0.1:8000 in Chromium when the desktop logs in. Automatic login is already set for this Jetson, so the page comes up after a restart with nobody at the keyboard.
 
-The service waits for Bluetooth, runs the virtualenv Python, and adds the `input` and `bluetooth` groups. It reads the real gamepad on every start. It does not pass `--mock` or `--mock-dispenser`. If `config/operator.yaml` has an IP, username, and password, a start connects to the real robot, takes the lease, and stands. Driving stays disabled, and the cone motor stays off unless the dispenser was enabled in `config.yaml`.
+The service waits for Bluetooth, runs the virtualenv Python, and adds the `input` and `bluetooth` groups. It reads the real gamepad on every start. It does not pass `--mock` or `--mock-dispenser`. If an IP, username, and password were remembered, a start connects to the real robot, takes the lease, and stands. Driving stays disabled, and the cone motor stays off unless the dispenser was enabled in `config.yaml`. The operator access code is printed in the service log.
 
 To install the service by hand, replace `REPLACE_WITH_JETSON_USERNAME` and `REPLACE_WITH_APP_DIR` in `deploy/spot-cone-controller.service`, then:
 

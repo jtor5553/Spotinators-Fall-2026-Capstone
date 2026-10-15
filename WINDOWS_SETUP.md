@@ -2,7 +2,7 @@
 
 This is the practice computer. A Windows PC runs the same operator page you will use on the trailer. Spot and the cone motor stay mocked here. The trailer computer is the Jetson, and that setup is in [Jetson setup](JETSON_SETUP.md).
 
-The on-screen title is **Spot Cone Placement System**. The page opens at http://127.0.0.1:8000. The Spot password is typed on the page. **Remember** stores the IP, username, and password in `config/operator.yaml`. Do not put the password in `config.yaml`.
+The on-screen title is **Spot Cone Placement System**. The page opens at http://127.0.0.1:8000. The terminal prints an operator access code. Type that code on the page before the Spot login. It is not the Spot password. **Remember** stores the IP and username in `config/operator.yaml` and the password in `config/operator.secret`. Git ignores both files. Do not put the password in `config.yaml`.
 
 ## What you need
 

@@ -7,7 +7,7 @@ Wants=network-online.target bluetooth.target
 Type=simple
 # Replace this user and the paths before installing.
 # The gamepad reader starts on every boot.
-# A saved IP, username, and password connect to the real robot, take the lease, and stand.
+# A saved IP and username, plus the password in operator.secret, connect, take the lease, and stand.
 # Driving stays disabled until the operator presses Enable driving.
 User=REPLACE_WITH_JETSON_USERNAME
 SupplementaryGroups=input bluetooth

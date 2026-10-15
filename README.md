@@ -22,7 +22,7 @@ Read the safety rules below before either computer is connected to the real robo
 - Stop and Emergency stop are different controls. Emergency stop has no confirmation question.
 - The software E-stop does not replace Spot's physical E-stop, or the mushroom E-stop on the trailer.
 - Do the first real tests in a closed lot, not in traffic.
-- The Spot password can be remembered in `config/operator.yaml`. Do not put it in `config.yaml`.
+- The Spot password can be remembered on this computer. It is stored in `config/operator.secret`, which git ignores, and the page never receives it. Do not put it in `config.yaml`. The page asks for the operator access code printed at startup. That code is not the Spot password.
 
 Speed limits, the button list, and what to do when a screen looks wrong are in the setup guide for the computer you are using.
 

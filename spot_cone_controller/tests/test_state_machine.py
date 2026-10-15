@@ -69,7 +69,7 @@ def test_estop_blocks_arm_and_resume(tmp_path):
 def test_routes_exist(tmp_path):
     app = create_app(make_controller(tmp_path))
     paths = {getattr(route, "path", "") for route in app.routes}
-    for path in ("/api/status", "/api/estop", "/api/stop", "/api/connect", "/api/signout", "/api/camera/frame"):
+    for path in ("/api/status", "/api/estop", "/api/stop", "/api/connect", "/api/signout", "/api/camera/frame", "/api/access"):
         assert path in paths
     assert "/api/disconnect" not in paths
 
@@ -130,16 +130,24 @@ def test_remember_stores_password_and_uncheck_clears_it(tmp_path):
     app.startup()
     app.connect_spot("10.1.1.5", "ada", "s3cret-value", remember=True, mock=True)
     saved = Path(app.config["_paths"]["operator"]).read_text(encoding="utf-8")
-    assert "s3cret-value" in saved
+    secret = Path(app.config["_paths"]["operator"]).with_suffix(".secret").read_text(encoding="utf-8")
+    assert "s3cret-value" not in saved
+    assert secret.strip() == "s3cret-value"
     assert app.config["saved_password"] == "s3cret-value"
-    assert app.snapshot()["saved_password"] == ""
+    snapshot = app.snapshot()
+    assert "saved_password" not in snapshot
+    assert snapshot["password_saved"] is True
+    assert "s3cret-value" not in str(snapshot)
     logged = " ".join(item["message"] for item in app.events.recent(40))
     assert "s3cret-value" not in logged
     app.sign_out()
-    assert app.snapshot()["saved_password"] == "s3cret-value"
+    signed_out = app.snapshot()
+    assert signed_out["password_saved"] is True
+    assert "s3cret-value" not in str(signed_out)
     app.connect_spot("10.1.1.5", "ada", "s3cret-value", remember=False, mock=True)
     assert app.config["saved_password"] == ""
     assert not Path(app.config["_paths"]["operator"]).is_file()
+    assert not Path(app.config["_paths"]["operator"]).with_suffix(".secret").is_file()
 
 
 def test_saved_credentials_stand_without_enabling_driving(tmp_path, monkeypatch):
