@@ -8,8 +8,6 @@ config/operator.yaml
 spot_cone_controller/config/operator.yaml
 config/operator.secret
 spot_cone_controller/config/operator.secret
-config/operator.access
-spot_cone_controller/config/operator.access
 .env
 .cursor/
 .DS_Store

@@ -4,7 +4,6 @@ import argparse
 import signal
 import sys
 
-from core.access import ensure_access_code
 from core.app_controller import AppController
 from core.config import load_config
 from gui.server import create_app
@@ -48,9 +47,6 @@ def print_banner(controller):
     print(f"Controller: {info['controller']}")
     print(f"Dispenser: {info['dispenser']}")
     print("Web Interface: STARTING")
-    print()
-    print(f"Operator access code: {ensure_access_code(controller.config)}")
-    print("Type this code on the operator page. It is not the Spot password.")
     print()
     print("System ready.")
 

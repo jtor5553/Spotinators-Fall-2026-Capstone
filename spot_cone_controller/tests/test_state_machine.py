@@ -69,9 +69,10 @@ def test_estop_blocks_arm_and_resume(tmp_path):
 def test_routes_exist(tmp_path):
     app = create_app(make_controller(tmp_path))
     paths = {getattr(route, "path", "") for route in app.routes}
-    for path in ("/api/status", "/api/estop", "/api/stop", "/api/connect", "/api/signout", "/api/camera/frame", "/api/access"):
+    for path in ("/api/status", "/api/estop", "/api/stop", "/api/connect", "/api/signout", "/api/camera/frame"):
         assert path in paths
     assert "/api/disconnect" not in paths
+    assert "/api/access" not in paths
 
 
 def test_real_and_gamepad_flags_are_gone():

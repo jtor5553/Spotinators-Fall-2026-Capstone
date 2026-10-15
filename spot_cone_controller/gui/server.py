@@ -3,18 +3,14 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-
-from core.access import COOKIE_NAME, codes_match, ensure_access_code, request_allowed
 
 GUI_ROOT = Path(__file__).resolve().parent
 
 
 def create_app(controller):
-    access_code = ensure_access_code(controller.config)
-
     @asynccontextmanager
     async def lifespan(app):
         controller.start_background()
@@ -25,38 +21,6 @@ def create_app(controller):
 
     app = FastAPI(title="Spot Cone Placement Controller", lifespan=lifespan)
     app.mount("/static", StaticFiles(directory=GUI_ROOT / "static"), name="static")
-
-    @app.middleware("http")
-    async def require_operator_access(request: Request, call_next):
-        if request_allowed(
-            request.method,
-            request.url.path,
-            request.cookies.get(COOKIE_NAME, ""),
-            access_code,
-        ):
-            return await call_next(request)
-        return JSONResponse(
-            {"ok": False, "message": "Operator access code required."},
-            status_code=401,
-        )
-
-    @app.post("/api/access")
-    async def grant_access(payload: dict, response: Response):
-        supplied = str(payload.get("code", ""))
-        if not codes_match(access_code, supplied):
-            return JSONResponse(
-                {"ok": False, "message": "Wrong access code."},
-                status_code=401,
-            )
-        response.set_cookie(
-            COOKIE_NAME,
-            access_code,
-            httponly=True,
-            samesite="strict",
-            max_age=12 * 60 * 60,
-            path="/",
-        )
-        return {"ok": True, "message": "Unlocked."}
 
     @app.get("/")
     def index():

@@ -13,30 +13,15 @@
     return document.getElementById(id);
   }
 
-  function showAccess(locked) {
-    byId("access-screen").classList.toggle("hidden", !locked);
-    if (locked) {
-      byId("connect-screen").classList.add("hidden");
-      byId("main-screen").classList.add("hidden");
-    }
-  }
-
   function post(url, body) {
     return fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body || {})
     }).then(function (response) {
-      if (response.status === 401) {
-        showAccess(true);
-        return null;
-      }
       return response.json();
     }).then(function (payload) {
-      if (!payload) {
-        return;
-      }
-      if (payload.message) {
+      if (payload && payload.message) {
         byId("message-line").textContent = operatorMessage(payload.message);
       }
       refresh();
@@ -51,20 +36,8 @@
     }
     statusInFlight = true;
     fetch(statusUrl, { cache: "no-store" })
-      .then(function (response) {
-        if (response.status === 401) {
-          showAccess(true);
-          return null;
-        }
-        return response.json();
-      })
-      .then(function (status) {
-        if (!status || !status.spot) {
-          return;
-        }
-        showAccess(false);
-        render(status);
-      })
+      .then(function (response) { return response.json(); })
+      .then(render)
       .catch(function () {
         byId("message-line").textContent = "Waiting for the Jetson controller.";
       })
@@ -320,27 +293,6 @@
     button.addEventListener("contextmenu", function (event) { event.preventDefault(); });
   }
 
-  byId("access-button").addEventListener("click", function () {
-    fetch("/api/access", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: byId("access-code").value })
-    }).then(function (response) {
-      return response.json().then(function (payload) {
-        return { ok: response.ok, payload: payload };
-      });
-    }).then(function (result) {
-      if (!result.ok) {
-        byId("message-line").textContent = (result.payload && result.payload.message) || "Wrong access code.";
-        return;
-      }
-      byId("access-code").value = "";
-      showAccess(false);
-      refresh();
-    }).catch(function () {
-      byId("message-line").textContent = "The Jetson did not answer. The robot program is still the controller.";
-    });
-  });
   byId("connect-button").addEventListener("click", function () {
     post("/api/connect", {
       hostname: byId("robot-ip").value,
