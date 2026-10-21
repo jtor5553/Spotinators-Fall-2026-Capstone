@@ -141,6 +141,9 @@
     byId("reset-estop").classList.toggle("hidden", !commands.reset_estop);
     byId("arm-button").classList.toggle("hidden", !commands.arm);
     byId("resume-button").classList.toggle("hidden", !commands.resume);
+    if (byId("sign-out-button")) {
+      byId("sign-out-button").disabled = status.spot.connection !== "CONNECTED";
+    }
   }
 
   function operatorMessage(text) {
@@ -311,6 +314,14 @@
   byId("resume-button").addEventListener("click", function () { post("/api/resume"); });
   byId("sign-out-button").addEventListener("click", function () {
     credentialsApplied = false;
+    var dropdownMenu = byId("dropdown-menu");
+    var menuToggle = byId("menu-toggle");
+    if (dropdownMenu) {
+      dropdownMenu.classList.remove("open");
+    }
+    if (menuToggle) {
+      menuToggle.setAttribute("aria-expanded", "false");
+    }
     post("/api/signout");
   });
   byId("cone-minus").addEventListener("click", function () { post("/api/cone/adjust", { delta: -1 }); });
