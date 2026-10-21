@@ -441,6 +441,16 @@ body:has(#main-screen:not(.hidden)) .state-pill::before {
   line-height: 1.5;
 }
 
+#sign-out-button {
+  width: 100%;
+  min-height: 42px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
 /* Notification Banners — contrast inversion, no color */
 .banner {
   margin: 0 0 16px;
@@ -901,8 +911,7 @@ input[type="password"]:focus {
 
 .commands #stand-button,
 .commands #sit-button,
-.commands #stop-button,
-.commands #sign-out-button {
+.commands #stop-button {
   min-height: 85px;
   font-size: 15px;
   font-weight: 800;
@@ -1219,8 +1228,7 @@ button:active:not(:disabled) {
 
   .commands #stand-button,
   .commands #sit-button,
-  .commands #stop-button,
-  .commands #sign-out-button {
+  .commands #stop-button {
     min-height: 75px;
     font-size: 14px;
   }
