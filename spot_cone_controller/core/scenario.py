@@ -44,7 +44,7 @@ def run_scenario(verbose=False):
     check("stand", app.stand()[0] and app.spot.posture == "STANDING")
     check("sit", app.sit()[0] and app.spot.posture == "SITTING")
     check("stand again for driving", app.stand()[0])
-    check("enable driving", app.arm()[0] and app.state == SystemState.ARMED)
+    check("driving auto-enables after stand", app.state == SystemState.ARMED and app.safety.motion_allowed)
 
     app.gamepad.set_connected(True)
     app.gamepad.set_left(0.0, 1.0)
@@ -72,7 +72,7 @@ def run_scenario(verbose=False):
     app.tick(2.0)
     check("reconnect does not resume motion", app.state == SystemState.STOPPED and app.spot.velocity == (0.0, 0.0, 0.0))
 
-    check("resume does not arm driving", app.resume()[0] and not app.safety.motion_allowed)
+    check("resume re-enables driving", app.resume()[0] and app.safety.motion_allowed and app.state == SystemState.ARMED)
     app.gamepad.set_button("x", True)
     app.tick(3.0)
     app.tick(3.4)

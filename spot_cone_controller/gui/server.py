@@ -94,9 +94,17 @@ def create_app(controller):
     def arm():
         return _result(controller.arm())
 
+    @app.post("/api/pause")
+    def pause():
+        return _result(controller.pause_driving())
+
     @app.post("/api/resume")
     def resume():
         return _result(controller.resume())
+
+    @app.post("/api/disconnect")
+    def disconnect():
+        return _result(controller.disconnect_spot())
 
     @app.post("/api/cone/hold")
     async def cone_hold(payload: dict):

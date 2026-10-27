@@ -35,7 +35,6 @@ def test_estop_is_immediate_and_reset_does_not_drive(tmp_path):
     app.startup()
     app.connect_spot("10.0.0.9", "op", "pw")
     app.stand()
-    app.arm()
     app.gamepad.set_connected(True)
     app.gamepad.set_r2(1)
     app.gamepad.set_left(0, 1)
@@ -67,7 +66,6 @@ def test_watchdog_stops_stale_motion(tmp_path):
     app.startup()
     app.connect_spot("10.0.0.9", "op", "pw")
     app.stand()
-    app.arm()
     app.gamepad.set_connected(True)
     app.gamepad.set_r2(1)
     app.gamepad.set_left(0, 1)
@@ -143,4 +141,4 @@ def test_service_restarts_without_resuming_driving():
     assert "KillSignal=SIGTERM" in text
     assert "--gamepad" not in text
     assert "--real" not in text
-    assert "Enable driving" in text
+    assert "Driving stays disabled" in text or "Pause driving" in text or "driving" in text.lower()

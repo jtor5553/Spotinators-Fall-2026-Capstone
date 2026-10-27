@@ -35,7 +35,6 @@ def test_absolute_speed_cap(tmp_path):
     app.config["movement"]["max_forward_speed"] = 5
     app.connect_spot("10.0.0.8", "op", "pw")
     app.stand()
-    app.arm()
     app.gamepad.set_connected(True)
     app.gamepad.set_r2(0.0)
     app.gamepad.set_left(0.0, 1.0)
@@ -49,7 +48,6 @@ def test_right_trigger_raises_the_speed_cap(tmp_path):
     app.config["movement"]["max_forward_speed"] = 5
     app.connect_spot("10.0.0.8", "op", "pw")
     app.stand()
-    app.arm()
     app.gamepad.set_connected(True)
     app.gamepad.set_r2(1.0)
     app.gamepad.set_left(0.0, 1.0)
@@ -245,9 +243,41 @@ def _driving(tmp_path):
     app.startup()
     app.connect_spot("10.0.0.8", "op", "pw")
     app.stand()
-    app.arm()
+    assert app.state.value == "ARMED"
     app.gamepad.set_connected(True)
     app.gamepad.set_r2(1.0)
     app.gamepad.set_left(0.0, 1.0)
     app.tick(1.0)
     return app
+
+
+def test_stand_auto_enables_driving(tmp_path):
+    app = make_controller(tmp_path)
+    app.startup()
+    app.connect_spot("10.0.0.8", "op", "pw")
+    assert app.stand()[0] is True
+    assert app.state.value == "ARMED"
+    assert app.safety.motion_allowed is True
+    flags = app.snapshot()["commands"]
+    assert flags["pause"] is True
+    assert flags["arm"] is False
+    assert flags["disconnect"] is True
+
+
+def test_pause_driving_disarms_until_resume_driving(tmp_path):
+    app = _driving(tmp_path)
+    assert app.spot.velocity[0] > 0
+    ok, message = app.pause_driving()
+    assert ok is True
+    assert "paused" in message.lower()
+    assert app.state.value == "CONTROL_READY"
+    assert app.safety.motion_allowed is False
+    assert app.spot.velocity == (0.0, 0.0, 0.0)
+    assert app.snapshot()["commands"]["arm"] is True
+    app.gamepad.set_left(0.0, 1.0)
+    app.tick(1.2)
+    assert app.spot.velocity == (0.0, 0.0, 0.0)
+    assert app.arm()[0] is True
+    assert app.state.value == "ARMED"
+    app.tick(1.4)
+    assert app.spot.velocity[0] > 0

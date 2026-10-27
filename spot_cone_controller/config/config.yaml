@@ -11,8 +11,10 @@ spot:
   username: ""
 
 controller:
-  type: "dualsense"
+  type: "unitree_r3"
   deadman_trigger: "R2"
+  mac: "98:DA:10:03:37:BA"
+  rfcomm_channel: 1
 
 dispenser:
   enabled: true
@@ -41,3 +43,5 @@ movement:
   max_forward_speed: 0.6
   max_lateral_speed: 0.4
   max_rotation_speed: 0.6
+  command_duration_sec: 0.25
+  control_loop_period_sec: 0.02

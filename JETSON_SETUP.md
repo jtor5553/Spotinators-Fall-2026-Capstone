@@ -2,7 +2,7 @@
 
 This is the setup for the trailer computer. An NVIDIA Jetson Orin Nano runs the program. The Spot tablet is only a touchscreen. It opens the page in a browser. It does not drive the robot, and closing the tablet does not stop the program. To stop it, see [Stop and start the program](#stop-and-start-the-program).
 
-Do these steps in order. Stop at the first check that fails. The program starts disarmed. Use the **Mock mode** checkbox on the connect page until a supervised test in a clear area has passed. Spot's physical E-stop, and the mushroom E-stop on the trailer, still have to cut power. The software E-stop does not replace them.
+Do these steps in order. Stop at the first check that fails. Driving enables automatically after Stand; use **Pause driving** to disarm the sticks. Use the **Mock mode** checkbox on the connect page until a supervised test in a clear area has passed. Spot's physical E-stop, and the mushroom E-stop on the trailer, still have to cut power. The software E-stop does not replace them.
 
 The Spot password is typed on the page. **Remember** stores it in `config/operator.secret`, which git ignores, and the page does not receive it again. Do not put it in `config.yaml` or in this guide.
 
@@ -11,9 +11,9 @@ Practice on a Windows PC is in [Windows setup](WINDOWS_SETUP.md). The project ov
 ## What you need
 
 - A Jetson Orin Nano with a monitor, keyboard, and mouse, or an SSH session, for the first setup.
-- JetPack 6 if the PS5 controller will connect over Bluetooth. JetPack 6 includes the `hid-playstation` kernel module. JetPack 5 usually does not, and this program cannot add that driver.
+- A Bluetooth adapter (USB is fine). This Jetson kernel has Classic Bluetooth; BLE is not required for the Unitree R3-1.
+- The Unitree R3-1 remote (lab name `Unitree-34M54J`), already charged. Pairing and packet notes: [UNITREE_R3_BLUETOOTH.md](UNITREE_R3_BLUETOOTH.md).
 - The Orin Nano Developer Kit does not include Wi-Fi or Bluetooth unless a card or a USB adapter was added. Ethernet to Spot does not need those radios.
-- A PS5 DualSense, already charged.
 - An Ethernet cable for Spot, used only in the Spot section below.
 - Internet on the Jetson once, for `apt` and `pip`. After that, the operator page does not need internet.
 
@@ -112,11 +112,15 @@ Check the same path without a browser:
 
 The last line should say `25 / 25 checks passed`.
 
-## 6. Pair the PS5 DualSense
+## 6. Pair the gamepad
 
-Skip this whole section if the hardware check said Bluetooth was `NOT FOUND`, or if `hid-playstation` was `NOT FOUND`.
+**Lab default is the Unitree R3-1.** Skip the DualSense subsection below and use [Unitree R3-1 remote (lab default)](#unitree-r3-1-remote-lab-default) plus [UNITREE_R3_BLUETOOTH.md](UNITREE_R3_BLUETOOTH.md).
 
-The controller uses Bluetooth only. Pair it once. After that, the program connects a controller that is already paired. It does not scan, pair, or trust a new one.
+### Optional: PS5 DualSense
+
+Skip this subsection unless you set `controller.type: dualsense`. Also skip if the hardware check said Bluetooth was `NOT FOUND`, or if `hid-playstation` was `NOT FOUND`.
+
+DualSense uses Bluetooth HID. Pair it once. After that, the program connects a controller that is already paired. It does not scan, pair, or trust a new one.
 
 1. On the DualSense, hold the PS button and the Create button together until the light bar flashes. Create is the small button to the left of the touchpad.
 2. On the Jetson:
@@ -179,20 +183,42 @@ bash scripts/system_check.sh
 .venv/bin/python main.py
 ```
 
-Open http://127.0.0.1:8000. The controller card should show the DualSense name, not a mock controller. Stick numbers should move before you enable driving. Then:
+Open http://127.0.0.1:8000. The controller card should show **Unitree R3**, not a mock controller. Stick numbers should move before Stand. Then:
 
 1. Check **Mock mode**. Type any Robot IP, leave the password blank, and press **Connect to Spot**.
-2. Press **Stand**, then **Enable driving**.
+2. Press **Stand**. Driving enables automatically; the button becomes **Pause driving**.
 3. Push the left stick to walk and the right stick to turn. Releasing the sticks stops.
-4. Pull R2. **Boost** should show Held with a percent.
-5. Hold Cross for half a second to drop one cone (physical motor when pins are set).
-6. R1 stands, L1 sits, and Options stops.
+4. Hold R2. **Boost** should show Held.
+5. Hold **A** for half a second to drop one cone (physical motor when pins are set).
+6. R1 stands, L1 sits, and Start stops.
 
-The real gamepad is read on every start. **Mock mode** on the page selects practice Spot. `controller.mock: false` in `config/config.yaml` is the default.
+The real gamepad is read on every start. **Mock mode** on the page selects practice Spot. `controller.type: unitree_r3` and `controller.mock: false` in `config/config.yaml` are the lab defaults.
 
 The Search paired button on the page only lists controllers Linux already knows. It does not pair a new one.
 
 If the card says the DualSense is present but cannot be read, the user is not in the `input` group in this login. Repeat the `usermod` line, install the udev rule again, and log out and back in.
+
+### Unitree R3-1 remote (lab default)
+
+`config/config.yaml` uses `controller.type: unitree_r3` for the Unitree R3-1 (`Unitree-34M54J`, MAC `98:DA:10:03:37:BA`) over Classic Bluetooth RFCOMM. Full pairing and packet notes: [UNITREE_R3_BLUETOOTH.md](UNITREE_R3_BLUETOOTH.md).
+
+The app opens RFCOMM channel 1 itself. Stop the lab `unitree-bt` helper first so the socket is not busy:
+
+```bash
+systemctl --user stop unitree-bt
+bluetoothctl info 98:DA:10:03:37:BA   # Paired: yes, Trusted: yes
+```
+
+| R3-1 | What it does |
+| --- | --- |
+| Left stick | Walk |
+| Right stick | Turn |
+| R2 | Boost |
+| L1 / R1 | Sit / Stand |
+| A | Hold ~0.5 s → drop one cone |
+| Start | Stop |
+
+Driving enables after Stand. Use **Pause driving** on the page to disarm sticks, or **Disconnect** to leave Spot. The robot’s 6-digit bind ID is unrelated — that binds the remote to a Unitree robot, not to the Jetson.
 
 ## 7. Connect Spot
 
@@ -214,13 +240,13 @@ Do this only after mock Stand, Sit, Stop, and Emergency stop have been practiced
 Leave **Mock mode** unchecked to use the real robot.
 
 4. Open the page. The username starts as `user2`. Type Spot's IP and password, then press **Connect to Spot**. Check **Remember credentials on this machine** if the next time the program starts should connect, take the lease, and stand. That writes the IP and username to `config/operator.yaml` and the password to `config/operator.secret` on that Jetson. The password is not sent back to the page. This Connect does not stand by itself.
-5. Confirm the battery and posture. Then press **Stand**, **Sit**, and **Stop**. **Sign out** powers the motors off, releases the lease, and returns to the login page. The robot stands again the next time the program starts, if the remembered identity is still there. Driving stays off until **Enable driving**.
+5. Confirm the battery and posture. Then press **Stand**, **Sit**, and **Stop**. **Sign out** or **Disconnect** powers the motors off, releases the lease, and returns to the login page. The robot stands again the next time the program starts, if the remembered identity is still there. Driving enables after Stand (or after Resume).
 
 A failed connection stays on the page. The usual causes are a disconnected Ethernet cable, the wrong IP, or the wrong password.
 
 Connecting registers this program as Spot's software E-stop endpoint and allows motion. A hardware E-stop still latches the page until that button is released and you press **Reset E-stop**. A process start with a remembered password takes the lease and stands. If Spot drops the control lease, the page says so. Press **Stand** to take control again.
 
-After Stop, or after the controller disconnects, press **Resume** and then **Enable driving** before the sticks will move Spot again.
+After Stop, or after the controller disconnects, press **Resume**. Driving enables again automatically. Use **Pause driving** to disarm sticks without a full Stop.
 
 ## 8. Cone motor
 
@@ -342,7 +368,7 @@ sudo bash scripts/install_boot.sh
 
 That installs `deploy/spot-cone-controller.service` with this user and this folder, enables it for every boot, and opens http://127.0.0.1:8000 in Chromium when the desktop logs in. Automatic login is already set for this Jetson, so the page comes up after a restart with nobody at the keyboard.
 
-The service waits for Bluetooth, runs the virtualenv Python, and adds the `input`, `bluetooth`, and `gpio` groups. It reads the real gamepad on every start. Mock Spot is only selected from the connect-page checkbox. If an IP, username, and password were remembered, a start connects to the real robot, takes the lease, and stands. Driving stays disabled until **Enable driving**.
+The service waits for Bluetooth, runs the virtualenv Python, and adds the `input`, `bluetooth`, and `gpio` groups. It reads the real gamepad on every start. Mock Spot is only selected from the connect-page checkbox. If an IP, username, and password were remembered, a start connects to the real robot, takes the lease, stands, and enables driving. Use **Pause driving** to disarm sticks.
 
 To install the service by hand, replace `REPLACE_WITH_JETSON_USERNAME` and `REPLACE_WITH_APP_DIR` in `deploy/spot-cone-controller.service`, then:
 
@@ -414,7 +440,7 @@ The usual causes are a username or path that was not replaced, a virtual environ
 ## Order for a supervised test
 
 1. Mock page, no controller. Step 5.
-2. Mock page with the DualSense. Step 6.
+2. Mock page with the Unitree R3-1. Step 6.
 3. Real Spot, dispenser still disabled. Step 7. Stand, sit, and stop only.
 4. Real Spot with driving enabled, in a closed lot, not in traffic.
 5. Real cone motor last. Step 8.
@@ -429,13 +455,10 @@ The usual causes are a username or path that was not replaced, a virtual environ
 | The page does not open | The terminal or the systemd service must still be running `main.py`. On the Jetson use http://127.0.0.1:8000. From the tablet, use the Jetson's `192.168.80` address and port 8000 while the tablet is on Spot's Wi-Fi. |
 | The program is still running after the browser closes | Stop the login service: `systemctl --user stop spot-cone-controller.service`. See [Stop and start the program](#stop-and-start-the-program). |
 | Camera names are listed and the picture stays blank | Set `camera.resize_ratio` to `1.0` and restart `main.py`. This Spot rejects a smaller ratio. |
-| Only walk and Stand work | Update to this version and restart `main.py`. On the controller card, R1 should say Held when you press it, L1 when you press sit, and Options when you press stop. Right-stick left and right turns. R2 is boost. Hold Cross for half a second to drop one cone. |
-| `evdev (venv): NOT IMPORTABLE` | From `spot_cone_controller`, repeat step 3. |
-| `hid-playstation: NOT FOUND` | Bluetooth DualSense will not appear. Do not continue the PS5 steps. |
-| DualSense is present but cannot be read | Add the user to the `input` group, install `deploy/99-dualsense.rules`, then log out and back in. |
-| DualSense not found | Pair it once and trust it, then start the program again. The program ignores motion-sensor and touchpad nodes. |
-| Sticks move on the card but Spot stays still | Press Stand, then Enable driving. After Stop, press Resume and then Enable driving again. |
-| Boost stays Released | Pull R2. |
+| Only walk and Stand work | Restart `main.py`. On the controller card, R1 Held = stand, L1 = sit, Start = stop. Right-stick turns. R2 is boost. Hold **A** ~0.5 s to drop one cone. |
+| Unitree R3 shows waiting / `Device or resource busy` | Stop the helper: `systemctl --user stop unitree-bt`. Confirm `controller.type: unitree_r3` and Paired+Trusted in `bluetoothctl info`. |
+| Sticks move on the card but Spot stays still | Press Stand (driving auto-enables). After Stop, press Resume. If you used Pause driving, press Resume driving. |
+| Boost stays Released | Hold R2. |
 | SDK is not installed | Run `.venv/bin/python -m pip install bosdyn-client` while the Jetson has internet. |
 | Wi-Fi NOT FOUND | Do not set up a hotspot. |
-| Emergency stop will not clear | Press Reset E-stop, then Resume, then Enable driving. Also release Spot's physical E-stop if it is pressed. |
+| Emergency stop will not clear | Press Reset E-stop, then Resume. Also release Spot's physical E-stop if it is pressed. |

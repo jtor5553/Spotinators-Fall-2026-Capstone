@@ -8,7 +8,7 @@ Type=simple
 # Replace this user and the paths before installing.
 # The gamepad reader starts on every boot.
 # A saved IP and username, plus the password in operator.secret, connect, take the lease, and stand.
-# Driving stays disabled until the operator presses Enable driving.
+# Driving enables automatically after Stand. Pause driving on the page to disarm sticks.
 User=REPLACE_WITH_JETSON_USERNAME
 SupplementaryGroups=input bluetooth gpio
 WorkingDirectory=REPLACE_WITH_APP_DIR

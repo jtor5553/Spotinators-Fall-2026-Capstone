@@ -45,7 +45,7 @@ def test_new_process_does_not_resume_old_motion(tmp_path):
     first.startup()
     first.connect_spot("10.0.0.4", "op", "pw")
     first.stand()
-    first.arm()
+    assert first.state == SystemState.ARMED
     second = make_controller(tmp_path / "restart")
     second.startup()
     assert second.state == SystemState.DISCONNECTED
@@ -63,15 +63,24 @@ def test_estop_blocks_arm_and_resume(tmp_path):
     assert app.resume()[0] is False
     app.reset_estop()
     assert app.resume()[0] is True
-    assert app.safety.motion_allowed is False
+    assert app.safety.motion_allowed is True
+    assert app.state == SystemState.ARMED
 
 
 def test_routes_exist(tmp_path):
     app = create_app(make_controller(tmp_path))
     paths = {getattr(route, "path", "") for route in app.routes}
-    for path in ("/api/status", "/api/estop", "/api/stop", "/api/connect", "/api/signout", "/api/camera/frame"):
+    for path in (
+        "/api/status",
+        "/api/estop",
+        "/api/stop",
+        "/api/connect",
+        "/api/signout",
+        "/api/disconnect",
+        "/api/pause",
+        "/api/camera/frame",
+    ):
         assert path in paths
-    assert "/api/disconnect" not in paths
     assert "/api/access" not in paths
 
 
@@ -201,7 +210,7 @@ def test_remember_stores_password_and_uncheck_clears_it(tmp_path):
     assert not Path(app.config["_paths"]["operator"]).with_suffix(".secret").is_file()
 
 
-def test_saved_credentials_stand_without_enabling_driving(tmp_path, monkeypatch):
+def test_saved_credentials_stand_and_enable_driving(tmp_path, monkeypatch):
     from core.config import save_operator_identity
     from mocks.mock_spot import MockSpot
 
@@ -254,8 +263,8 @@ def test_saved_credentials_stand_without_enabling_driving(tmp_path, monkeypatch)
     assert app.spot.connected is True
     assert app.spot.posture == "STANDING"
     assert app.spot.lease.acquires == 1
-    assert app.safety.motion_allowed is False
-    assert app.state == SystemState.CONTROL_READY
+    assert app.safety.motion_allowed is True
+    assert app.state == SystemState.ARMED
 
 
 def test_mock_flag_skips_saved_startup(tmp_path):

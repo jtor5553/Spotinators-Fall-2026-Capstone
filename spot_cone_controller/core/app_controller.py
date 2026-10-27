@@ -7,6 +7,7 @@ import time
 from autonomy.manager import AutonomyManager
 from controller.dualsense import DualSenseController, paired_controllers
 from controller.mappings import command_from_sticks
+from controller.unitree_r3 import UnitreeR3Controller
 from controller.xinput_pad import XInputController
 from core.config import clear_operator_identity, save_operator_identity
 from core.events import EventLog
@@ -68,6 +69,7 @@ class AppController:
         self._lease_logged = False
         self._lease_loss_logged = False
         self._motor_faulted = False
+        self._driving_paused = False
 
     def startup(self):
         if self._started:
@@ -204,6 +206,7 @@ class AppController:
                 self.last_error = str(exc)
             self.safety.motion_allowed = False
             self.safety.stop_latched = False
+            self._driving_paused = False
             self.state = SystemState.DISCONNECTED
             self._spot_cache = self.spot.status()
             self.events.add("SPOT DISCONNECTED")
@@ -244,14 +247,34 @@ class AppController:
             return True, self.warning
 
     def arm(self):
+        """Enable or resume driving after a Pause driving press."""
         with self._lock:
             if self.state != SystemState.CONTROL_READY or not self.safety.arm():
-                self.last_error = "Enable driving only after Spot is connected, standing is available, and stop is cleared."
+                self.last_error = "Driving is available only when Spot is ready and stop is cleared."
                 return False, self.last_error
+            self._driving_paused = False
             self.state = SystemState.ARMED
             self.last_error = ""
             self.events.add("DRIVING ENABLED")
             return True, "Driving enabled. Use the sticks to move."
+
+    def pause_driving(self):
+        """Stop velocity and disarm sticks without a full Stop latch."""
+        with self._lock:
+            if self.state not in (SystemState.ARMED, SystemState.MANUAL_OPERATION):
+                self.last_error = "Pause driving is available only while driving is enabled."
+                return False, self.last_error
+            try:
+                self.spot.stop()
+            except Exception:
+                self._log_exception("pause stop failed")
+            self.watchdog.clear_motion()
+            self.safety.motion_allowed = False
+            self._driving_paused = True
+            self.state = SystemState.CONTROL_READY
+            self.last_error = ""
+            self.events.add("DRIVING PAUSED")
+            return True, "Driving paused."
 
     def resume(self):
         with self._lock:
@@ -259,12 +282,17 @@ class AppController:
                 self.last_error = "Resume is available only after a stop, and not during E-stop."
                 return False, self.last_error
             self.state = SystemState.CONTROL_READY if self.spot.connected else SystemState.DISCONNECTED
+            self._driving_paused = False
             if self.state == SystemState.DISCONNECTED:
                 self.safety.motion_allowed = False
+            else:
+                self._auto_arm_locked()
             self.warning = ""
             self.last_error = ""
             self.events.add("OPERATOR RESUME")
-            return True, "Resumed. Driving stays disabled until you enable it."
+            if self.safety.motion_allowed:
+                return True, "Resumed. Driving enabled."
+            return True, "Resumed."
 
     def request_drop(self):
         with self._lock:
@@ -399,10 +427,13 @@ class AppController:
             self._normal_stop_locked("WATCHDOG STOP")
 
     def _loop(self):
+        # 50 Hz keeps stick updates closer to the Unitree stream (~20–50 Hz).
+        period = float(self.config.get("movement", {}).get("control_loop_period_sec", 0.02))
+        period = max(0.01, min(0.05, period))
         while not self._stop_event.is_set():
             start = time.monotonic()
             self.tick(start)
-            remaining = 0.05 - (time.monotonic() - start)
+            remaining = period - (time.monotonic() - start)
             if remaining > 0:
                 self._stop_event.wait(remaining)
 
@@ -577,6 +608,8 @@ class AppController:
             self._lease_logged = True
         if self.state == SystemState.SPOT_CONNECTED:
             self.state = SystemState.CONTROL_READY
+            self._driving_paused = False
+            self._auto_arm_locked()
         self.last_error = ""
         return True, "Stand command sent."
 
@@ -773,14 +806,17 @@ class AppController:
     def _command_flags(self):
         connected = self.spot.connected
         blocked = self.state in (SystemState.ESTOP, SystemState.FAULT)
+        driving = self.state in (SystemState.ARMED, SystemState.MANUAL_OPERATION)
         return {
             "stand": connected and not blocked,
             "sit": connected and not blocked,
             "stop": True,
             "estop": True,
             "reset_estop": self.state == SystemState.ESTOP,
-            "arm": self.state == SystemState.CONTROL_READY,
+            "pause": driving,
+            "arm": self.state == SystemState.CONTROL_READY and self._driving_paused,
             "resume": self.state == SystemState.STOPPED,
+            "disconnect": connected,
             "drop": self._cones_allowed_quiet() and self.dispenser.state == DispenserState.READY,
             "adjust_cones": self.dispenser.state not in (
                 DispenserState.DROPPING,
@@ -788,6 +824,18 @@ class AppController:
                 DispenserState.REVERSING,
             ),
         }
+
+    def _auto_arm_locked(self):
+        """Arm sticks when Spot becomes ready, unless the operator paused driving."""
+        if self._driving_paused:
+            return False
+        if self.state != SystemState.CONTROL_READY:
+            return False
+        if not self.safety.arm():
+            return False
+        self.state = SystemState.ARMED
+        self.events.add("DRIVING ENABLED")
+        return True
 
     def _cones_allowed_quiet(self):
         if self.safety.estop_latched or not self.safety.cone_allowed:
@@ -822,7 +870,6 @@ class AppController:
         if not ok:
             return
         self.stand()
-        self.safety.motion_allowed = False
 
     def _use_spot_client_locked(self, mock):
         if self.spot.connected:
@@ -899,6 +946,9 @@ class AppController:
             return MockController()
         if sys.platform == "win32":
             return XInputController()
+        controller_type = str(self.config["controller"].get("type", "dualsense")).strip().lower()
+        if controller_type == "unitree_r3":
+            return UnitreeR3Controller(self.config["controller"])
         return DualSenseController()
 
     def _log_exception(self, message):

@@ -143,17 +143,35 @@
 
   function renderCommands(status) {
     var commands = status.commands;
+    var armButton = byId("arm-button");
     byId("stand-button").disabled = !commands.stand;
     byId("sit-button").disabled = !commands.sit;
-    byId("arm-button").disabled = !commands.arm;
     byId("resume-button").disabled = !commands.resume;
     byId("drop-cone").disabled = !commands.drop;
     byId("cone-minus").disabled = !commands.adjust_cones;
     byId("cone-plus").disabled = !commands.adjust_cones;
     byId("cone-reset").disabled = !commands.adjust_cones;
     byId("reset-estop").classList.toggle("hidden", !commands.reset_estop);
-    byId("arm-button").classList.toggle("hidden", !commands.arm);
     byId("resume-button").classList.toggle("hidden", !commands.resume);
+    if (commands.pause) {
+      armButton.textContent = "Pause driving";
+      armButton.dataset.mode = "pause";
+      armButton.disabled = false;
+      armButton.classList.remove("hidden");
+    } else if (commands.arm) {
+      armButton.textContent = "Resume driving";
+      armButton.dataset.mode = "arm";
+      armButton.disabled = false;
+      armButton.classList.remove("hidden");
+    } else {
+      armButton.dataset.mode = "";
+      armButton.disabled = true;
+      armButton.classList.add("hidden");
+    }
+    if (byId("disconnect-button")) {
+      byId("disconnect-button").disabled = !commands.disconnect;
+      byId("disconnect-button").classList.toggle("hidden", !commands.disconnect);
+    }
     if (byId("sign-out-button")) {
       byId("sign-out-button").disabled = status.spot.connection !== "CONNECTED";
     }
@@ -333,8 +351,20 @@
   byId("stop-button").addEventListener("click", function () { post("/api/stop"); });
   byId("estop-button").addEventListener("click", function () { post("/api/estop"); });
   byId("reset-estop").addEventListener("click", function () { post("/api/estop/reset"); });
-  byId("arm-button").addEventListener("click", function () { post("/api/arm"); });
+  byId("arm-button").addEventListener("click", function () {
+    var mode = byId("arm-button").dataset.mode;
+    if (mode === "pause") {
+      post("/api/pause");
+    } else {
+      post("/api/arm");
+    }
+  });
   byId("resume-button").addEventListener("click", function () { post("/api/resume"); });
+  if (byId("disconnect-button")) {
+    byId("disconnect-button").addEventListener("click", function () {
+      post("/api/disconnect");
+    });
+  }
   byId("sign-out-button").addEventListener("click", function () {
     credentialsApplied = false;
     var dropdownMenu = byId("dropdown-menu");

@@ -16,8 +16,9 @@ BOOST_MAX_FORWARD = 1.2
 BOOST_MAX_LATERAL = 0.8
 BOOST_MAX_ROTATION = 1.2
 # Spot rejects a command whose end time has already passed when it arrives.
-# On the robot Wi-Fi that trip can take longer than the 0.4 s refresh window.
-COMMAND_LIFETIME_SEC = 2.0
+# Keep this above the control-loop period and under the motion watchdog so a
+# missed refresh stops sooner without false rejects on robot Wi-Fi.
+COMMAND_LIFETIME_SEC = 0.6
 
 
 def clamp_velocity(forward, lateral, rotation):

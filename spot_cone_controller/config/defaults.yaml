@@ -16,12 +16,16 @@ controller:
   deadzone: 0.12
   r2_threshold: 0.2
   cone_hold_sec: 0.5
+  # Unitree R3-1 (RFCOMM). Used when type is unitree_r3. UNITREE_MAC env overrides mac.
+  mac: "98:DA:10:03:37:BA"
+  rfcomm_channel: 1
 
 movement:
   max_forward_speed: 0.6
   max_lateral_speed: 0.4
   max_rotation_speed: 0.6
-  command_duration_sec: 0.4
+  command_duration_sec: 0.25
+  control_loop_period_sec: 0.02
   watchdog_timeout_sec: 1.0
 
 dispenser:

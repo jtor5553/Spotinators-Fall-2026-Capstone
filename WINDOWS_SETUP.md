@@ -78,44 +78,47 @@ Check **Mock mode** on the connect page. The real gamepad is read on every start
 Then:
 
 1. Check **Mock mode**. Type any Robot IP, leave the password blank, and press **Connect to Spot**.
-2. Press **Stand**, then **Enable driving**.
+2. Press **Stand**. Driving enables automatically; use **Pause driving** to disarm sticks.
 3. Push the left stick to walk and the right stick to turn. Speed follows how far each stick is pushed. Hold the right trigger to raise the top speed. Releasing the sticks stops.
 4. Hold A for half a second to drop one cone.
 5. The right bumper stands, the left bumper sits, and Start stops.
 
-After Stop, or after the controller disconnects, press **Resume** and then **Enable driving** before the sticks will move the mock robot again.
+After Stop, or after the controller disconnects, press **Resume** (driving re-enables). Use **Pause driving** / **Resume driving** to disarm without a full Stop.
 
-| PG-9083S | PS5 on the Jetson | What it does |
-| --- | --- | --- |
-| Left stick | Left stick | Walk. Speed follows how far you push it. |
-| Right stick | Right stick | Turn. |
-| Right trigger | R2 | Hold to go faster. |
-| Left bumper | L1 | Sit |
-| Right bumper | R1 | Stand |
-| A (bottom) | Cross | Hold for half a second to drop one cone. |
-| Start | Options | Stop |
+Jetson operators use the **Unitree R3-1** (not DualSense). Mapping:
 
-The same list is on the operator page under **Controller buttons**.
+| Unitree R3-1 | What it does |
+| --- | --- |
+| Left stick | Walk. Speed follows how far you push it. |
+| Right stick | Turn. |
+| R2 | Hold to go faster. |
+| L1 | Sit |
+| R1 | Stand |
+| A | Hold for half a second to drop one cone. |
+| Start | Stop |
+
+Windows practice with a PG-9083S uses the same roles (right trigger = boost, A = drop, Start = stop). The operator page under **Controller buttons** lists the R3-1 map.
 
 ## 4. What the page buttons do
 
 | Control | What it does |
 | --- | --- |
-| Stand | The robot stands. On a manual connect this is the first command that takes control. A process start with a remembered password stands by itself. |
+| Stand | The robot stands. Driving enables automatically afterward. A process start with a remembered password stands by itself. |
 | Sign out | Powers the motors off, releases the lease, and returns to the login page. |
+| Disconnect | Same leave-Spot path as Sign out from the commands panel. |
 | Sit | The robot sits. |
 | Stop | Speed goes to zero and the cone motor turns off. The robot stays in its current posture. |
-| Enable driving | Arms the sticks. Required after Stand, and again after Resume. |
-| Resume | Clears a stop. Does not start driving by itself. |
+| Pause driving | Disarms sticks without a full Stop latch. Becomes **Resume driving** until you arm again. |
+| Resume | Clears a stop and re-enables driving. |
 | Emergency stop | Stops immediately. There is no confirmation question. |
-| Reset E-stop | Clears the software E-stop. Driving stays off. |
+| Reset E-stop | Clears the software E-stop. Press Resume afterward. |
 | Hold to drop cone | Hold for half a second. A tap does nothing. Holding longer does not drop a second cone. |
 
 With the right trigger released, the caps are 0.6 m/s forward, 0.4 m/s sideways, and 0.6 rad/s turning. A full right-trigger pull raises those caps to 1.2 m/s forward, 0.8 m/s sideways, and 1.2 rad/s turning.
 
 ## 5. Stay in practice mode
 
-This PC does not power the cone motor and does not use the PS5 controller. Bluetooth DualSense setup, Spot's Ethernet connection, the tablet hotspot, and starting at boot are all in [Jetson setup](JETSON_SETUP.md).
+This PC does not power the cone motor and does not use the Unitree R3-1. Bluetooth R3 setup, Spot's Ethernet connection, the tablet hotspot, and starting at boot are all in [Jetson setup](JETSON_SETUP.md).
 
 Leave **Mock mode** checked for practice. Do not point this practice PC at the real robot unless a supervised test says to. If that test is on Windows, install the SDK into this same virtual environment while the PC has internet:
 
@@ -124,7 +127,7 @@ Leave **Mock mode** checked for practice. Do not point this practice PC at the r
 .\.venv\Scripts\python main.py
 ```
 
-Leave **Mock mode** unchecked, type the IP and password, and press **Connect to Spot**. Check **Remember** if the next time this program starts should connect, take the lease, and stand. Driving stays off until **Enable driving**. Check **Mock mode** when a run must stay in practice even though a password is saved.
+Leave **Mock mode** unchecked, type the IP and password, and press **Connect to Spot**. Check **Remember** if the next time this program starts should connect, take the lease, and stand (driving then enables). Check **Mock mode** when a run must stay in practice even though a password is saved.
 
 ## If something looks wrong
 
@@ -137,6 +140,6 @@ Leave **Mock mode** unchecked, type the IP and password, and press **Connect to 
 | evdev is not installed | Expected on Windows. The PG-9083S is read through XInput. Do not install the Jetson requirements file here. |
 | Gamepad not found | Put the PG-9083S in PC mode (hold Home and X) and pair it again in Bluetooth settings, then start the program again. |
 | The controller card stays on the mock controller | `controller.mock` is true in the config. The default is false. |
-| Sticks move on the card but the robot stays still | Press Stand, then Enable driving. After Stop, press Resume and then Enable driving again. |
+| Sticks move on the card but the robot stays still | Press Stand (driving auto-enables). After Stop, press Resume. If paused, press Resume driving. |
 | Boost stays Released | Pull the right trigger. |
-| Emergency stop will not clear | Press Reset E-stop, then Resume, then Enable driving. |
+| Emergency stop will not clear | Press Reset E-stop, then Resume. |

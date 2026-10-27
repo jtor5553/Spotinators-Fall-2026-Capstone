@@ -9,32 +9,44 @@ The page title is **Spot Cone Placement System**. Practice it on a Windows PC fi
 Pick the computer you are sitting at.
 
 - **[Windows setup](WINDOWS_SETUP.md).** Practice the page, and drive with a PG-9083S gamepad. Spot and the motor stay mocked.
-- **[Jetson setup](JETSON_SETUP.md).** Set up the Orin Nano on the trailer: the PS5 controller, Spot, the cone motor, the Spot tablet over Spot's Wi-Fi, and starting at boot.
+- **[Jetson setup](JETSON_SETUP.md).** Set up the Orin Nano on the trailer: the Unitree R3-1 remote, Spot, the cone motor, the Spot tablet over Spot's Wi-Fi, and starting at boot.
+- **[Unitree R3 Bluetooth](UNITREE_R3_BLUETOOTH.md).** Pairing, RFCOMM, and R3-1 stick/button layout for the Jetson.
 
 Read the safety rules below before either computer is connected to the real robot.
 
 ## Safety
 
-- Driving starts disabled. The motor starts off.
+- Driving enables automatically after Stand (and after Resume). Use **Pause driving** to disarm the sticks without a full Stop. The motor starts off.
 - If a saved IP, username, and password are present, starting the program connects to the real robot, takes the lease, and stands. It does not continue an old move or an old motor command.
-- Sticks do nothing until Spot is standing and driving is enabled.
-- If the gamepad disconnects, Spot stops and cone drops are disabled.
+- If the gamepad disconnects, Spot stops and cone drops are disabled until Resume.
 - Stop and Emergency stop are different controls. Emergency stop has no confirmation question.
 - The software E-stop does not replace Spot's physical E-stop, or the mushroom E-stop on the trailer.
 - Do the first real tests in a closed lot, not in traffic.
 - The Spot password can be remembered on this computer. It is stored in `config/operator.secret`, which git ignores, and the page never receives it. Do not put it in `config.yaml`.
 
-Speed limits, the button list, and what to do when a screen looks wrong are in the setup guide for the computer you are using.
+### Unitree R3-1 controls (Jetson)
+
+| Control | What it does |
+| --- | --- |
+| Left stick | Walk. Speed follows how far you push it. |
+| Right stick | Turn. |
+| R2 | Hold to go faster. |
+| L1 / R1 | Sit / Stand |
+| A | Hold ~0.5 s to drop one cone |
+| Start | Stop |
+
+Speed limits and troubleshooting are in the setup guide for the computer you are using.
 
 ## What is in this repository
 
 ```text
 WINDOWS_SETUP.md          practice on a Windows PC
 JETSON_SETUP.md           Orin Nano setup, from install through boot
+UNITREE_R3_BLUETOOTH.md   R3-1 Bluetooth / RFCOMM notes
 spot_cone_controller/     the program
   main.py                 starts the controller and the web page
   gui/                    the touchscreen page
-  controller/             stick mapping, DualSense reader, Windows gamepad reader
+  controller/             stick mapping, Unitree R3 reader, Windows gamepad reader
   spot/                   real Spot connection
   dispenser/              cone motor
   config/                 settings. Do not store the Spot password in config.yaml.

@@ -67,11 +67,11 @@
           <div class="dropdown-section">
             <h2>Controller</h2>
             <p><span class="dot" id="pad-dot"></span> <span id="pad-connection">Not connected</span></p>
-            <p>Boost: <strong id="pad-r2">Released</strong></p>
+            <p>Boost (R2): <strong id="pad-r2">Released</strong></p>
             <p>Left stick X <strong id="left-x">0.00</strong> Y <strong id="left-y">0.00</strong></p>
             <p>Right stick X <strong id="right-x">0.00</strong> Y <strong id="right-y">0.00</strong></p>
-            <p>Cross: <strong id="button-x">Released</strong></p>
-            <p>L1: <strong id="button-lb">Released</strong> R1: <strong id="button-rb">Released</strong> Options:
+            <p>A (drop): <strong id="button-x">Released</strong></p>
+            <p>L1: <strong id="button-lb">Released</strong> R1: <strong id="button-rb">Released</strong> Start:
               <strong id="button-options">Released</strong></p>
             <button id="bluetooth-button" class="secondary" type="button">Search paired</button>
             <pre id="bluetooth-list" class="fine"></pre>
@@ -186,8 +186,9 @@
           <button id="stand-button" class="action" type="button">Stand</button>
           <button id="sit-button" class="action" type="button">Sit</button>
           <button id="stop-button" class="stop" type="button">Stop</button>
-          <button id="arm-button" class="action" type="button">Enable driving</button>
+          <button id="arm-button" class="action" type="button">Pause driving</button>
           <button id="resume-button" class="action" type="button">Resume</button>
+          <button id="disconnect-button" class="secondary" type="button">Disconnect</button>
           <button id="reset-estop" class="action hidden" type="button">Reset E-stop</button>
           <button id="estop-button" class="estop" type="button">Emergency stop</button>
         </div>
@@ -198,10 +199,10 @@
     <section class="panel controls-help">
       <details>
         <summary>Controller buttons</summary>
-        <p class="fine">After Stand, press Enable driving on this page. The sticks do nothing until then.</p>
+        <p class="fine">Driving enables automatically after Stand (and after Resume). Use Pause driving to disarm the sticks without a full Stop.</p>
         <div class="pad-guides">
           <div>
-            <h3>Xbox</h3>
+            <h3>Unitree R3-1</h3>
             <table>
               <tbody>
                 <tr>
@@ -210,42 +211,7 @@
                 </tr>
                 <tr>
                   <th>Right stick</th>
-                  <td>Turn.</td>
-                </tr>
-                <tr>
-                  <th>Right trigger</th>
-                  <td>Hold to go faster.</td>
-                </tr>
-                <tr>
-                  <th>Left bumper</th>
-                  <td>Sit.</td>
-                </tr>
-                <tr>
-                  <th>Right bumper</th>
-                  <td>Stand.</td>
-                </tr>
-                <tr>
-                  <th>A</th>
-                  <td>Hold for half a second to drop one cone.</td>
-                </tr>
-                <tr>
-                  <th>Start</th>
-                  <td>Stop.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div>
-            <h3>PS5</h3>
-            <table>
-              <tbody>
-                <tr>
-                  <th>Left stick</th>
-                  <td>Walk. Speed follows how far you push it.</td>
-                </tr>
-                <tr>
-                  <th>Right stick</th>
-                  <td>Turn.</td>
+                  <td>Turn (left/right).</td>
                 </tr>
                 <tr>
                   <th>R2</th>
@@ -260,11 +226,11 @@
                   <td>Stand.</td>
                 </tr>
                 <tr>
-                  <th>Cross</th>
+                  <th>A</th>
                   <td>Hold for half a second to drop one cone.</td>
                 </tr>
                 <tr>
-                  <th>Options</th>
+                  <th>Start</th>
                   <td>Stop.</td>
                 </tr>
               </tbody>
