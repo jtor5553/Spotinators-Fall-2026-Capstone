@@ -10,7 +10,7 @@ Type=simple
 # A saved IP and username, plus the password in operator.secret, connect, take the lease, and stand.
 # Driving stays disabled until the operator presses Enable driving.
 User=REPLACE_WITH_JETSON_USERNAME
-SupplementaryGroups=input bluetooth
+SupplementaryGroups=input bluetooth gpio
 WorkingDirectory=REPLACE_WITH_APP_DIR
 ExecStart=REPLACE_WITH_APP_DIR/.venv/bin/python main.py
 Restart=on-failure

@@ -35,6 +35,9 @@ class AppController:
         self.events = EventLog(None)
         self.spot = self._build_spot()
         self.gamepad = self._build_gamepad()
+        # Baseline before a Mock-mode connect flips the dispenser on for practice.
+        self._dispenser_baseline_enabled = bool(config["dispenser"].get("enabled", False))
+        self._dispenser_baseline_mock = bool(config["dispenser"].get("mock", True))
         self.dispenser = build_dispenser(config, verbose=verbose)
         self.watchdog = Watchdog(config, self.spot.stop, self.dispenser.motor)
         self.selected_camera = None
@@ -826,12 +829,65 @@ class AppController:
             return
         want_mock = bool(mock)
         self.config["system"]["mock_mode"] = want_mock
-        if isinstance(self.spot, MockSpot) == want_mock:
+        if isinstance(self.spot, MockSpot) != want_mock:
+            self.spot = self._build_spot()
+            self._spot_cache = self.spot.status()
+            if self.watchdog is not None:
+                self.watchdog._movement_stop = self.spot.stop
+        # GUI Mock mode mocks Spot only. When DIR/PWM pins are set, the physical
+        # motor stays available so operators can test drops without a real robot.
+        self._sync_dispenser_for_mock_mode_locked(want_mock)
+
+    def _pins_configured(self):
+        settings = self.config["dispenser"]
+        return settings.get("dir_pin") is not None and settings.get("pwm_pin") is not None
+
+    def _hardware_motor_available(self):
+        if not self._pins_configured():
+            return False
+        try:
+            import gpiod  # noqa: F401
+        except ImportError:
+            return False
+        return True
+
+    def _sync_dispenser_for_mock_mode_locked(self, want_mock):
+        if want_mock and self._hardware_motor_available():
+            enabled, mock = True, False
+        elif want_mock:
+            enabled, mock = True, True
+        else:
+            enabled = self._dispenser_baseline_enabled
+            mock = self._dispenser_baseline_mock
+        settings = self.config["dispenser"]
+        already = (
+            bool(settings.get("enabled", False)) == enabled
+            and bool(settings.get("mock", True)) == mock
+            and self.dispenser.enabled == enabled
+        )
+        if already:
             return
-        self.spot = self._build_spot()
-        self._spot_cache = self.spot.status()
-        if self.watchdog is not None:
-            self.watchdog._movement_stop = self.spot.stop
+        settings["enabled"] = enabled
+        settings["mock"] = mock
+        self._rebuild_dispenser_locked()
+
+    def _rebuild_dispenser_locked(self):
+        try:
+            self.dispenser.stop()
+        except Exception:
+            self._log_exception("dispenser stop during rebuild failed")
+        motor = self.dispenser.motor
+        if motor is not None and hasattr(motor, "shutdown"):
+            try:
+                motor.shutdown()
+            except Exception:
+                self._log_exception("motor shutdown during rebuild failed")
+        cones = self.dispenser.cones_remaining
+        self.dispenser = build_dispenser(self.config, verbose=self.verbose)
+        self.dispenser.initialize()
+        if 0 <= cones <= self.dispenser.capacity:
+            self.dispenser.cones_remaining = cones
+        self.watchdog = Watchdog(self.config, self.spot.stop, self.dispenser.motor)
 
     def _build_spot(self):
         if self.config["system"].get("mock_mode", True):

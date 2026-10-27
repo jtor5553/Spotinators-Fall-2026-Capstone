@@ -12,23 +12,16 @@ from gui.server import create_app
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Spot cone placement controller")
     parser.add_argument(
-        "--mock",
+        "--self-test",
         action="store_true",
-        help="Practice with mock Spot and skip the saved-credential startup",
+        help="Run the mock manual-operation checks and exit",
     )
-    parser.add_argument("--mock-dispenser", action="store_true", help="Enable the mock cone dispenser")
-    parser.add_argument("--self-test", action="store_true", help="Run the mock manual-operation checks and exit")
     parser.add_argument("--config", default=None, help="Path to a config YAML file")
     return parser.parse_args(argv)
 
 
 def apply_args(config, args):
-    if args.mock:
-        config["system"]["mock_mode"] = True
-        config["_skip_auto_start"] = True
-    if args.mock_dispenser:
-        config["dispenser"]["mock"] = True
-        config["dispenser"]["enabled"] = True
+    del args
     return config
 
 
@@ -49,6 +42,7 @@ def print_banner(controller):
     print("Web Interface: STARTING")
     print()
     print("System ready.")
+    print("Mock mode is selected only on the connect page (no --mock flag).")
 
 
 def main(argv=None):

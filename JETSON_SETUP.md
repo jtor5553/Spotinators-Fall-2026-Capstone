@@ -2,7 +2,7 @@
 
 This is the setup for the trailer computer. An NVIDIA Jetson Orin Nano runs the program. The Spot tablet is only a touchscreen. It opens the page in a browser. It does not drive the robot, and closing the tablet does not stop the program. To stop it, see [Stop and start the program](#stop-and-start-the-program).
 
-Do these steps in order. Stop at the first check that fails. The program starts disarmed, with the cone motor off. Leave `mock_mode: true` until a supervised test in a clear area has passed. Spot's physical E-stop, and the mushroom E-stop on the trailer, still have to cut power. The software E-stop does not replace them.
+Do these steps in order. Stop at the first check that fails. The program starts disarmed. Use the **Mock mode** checkbox on the connect page until a supervised test in a clear area has passed. Spot's physical E-stop, and the mushroom E-stop on the trailer, still have to cut power. The software E-stop does not replace them.
 
 The Spot password is typed on the page. **Remember** stores it in `config/operator.secret`, which git ignores, and the page does not receive it again. Do not put it in `config.yaml` or in this guide.
 
@@ -52,10 +52,10 @@ sed -i 's/\r$//' scripts/system_check.sh scripts/setup_hotspot.sh
 Stay in `spot_cone_controller`:
 
 ```bash
-python3 -m venv .venv
+python3 -m venv .venv --system-site-packages
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -r requirements-jetson.txt
-.venv/bin/python -c "import evdev; print('evdev ok')"
+.venv/bin/python -c "import evdev; import gpiod; print('evdev ok'); print('gpiod ok')"
 ```
 
 The last line should print `evdev ok`. `requirements-jetson.txt` installs the same packages as Windows, plus `evdev`. The Windows `requirements.txt` file does not include `evdev`.
@@ -82,29 +82,27 @@ Save the whole output. Read these lines before continuing:
 | `evdev (venv): IMPORTABLE` | Step 3 worked. `NOT IMPORTABLE` or `NO VENV` means repeat step 3 from `spot_cone_controller`. |
 | `DualSense gamepad node: NOT FOUND` | Expected until the controller is connected. |
 
-## 5. Open the page in mock mode
+## 5. Open the page
 
-This run does not move Spot and does not power the cone motor.
+There is no `--mock` flag. Mock Spot is selected only with the **Mock mode** checkbox on the connect page.
 
 ```bash
-.venv/bin/python main.py --mock --mock-dispenser
+.venv/bin/python main.py
 ```
-
-`--mock` keeps this run in practice. It does not stand Spot even if a password was remembered. The gamepad is still read.
 
 Leave that terminal open. On the Jetson, open a browser to:
 
 http://127.0.0.1:8000
 
-The startup text should include `Mode: MOCK` and `Dispenser: READY`. Then:
+Then:
 
-1. Check **Mock mode**. Practice does not use a real address.
+1. Check **Mock mode**. Practice does not use a real Spot address.
 2. Type any numbers into Robot IP. The username can stay `user2`. Leave the password blank and press **Connect to Spot**.
 3. Press **Stand**, then **Sit**, then **Stop**.
-4. Press and hold **Hold to drop cone** for half a second. The count goes from 4 to 3. Holding longer does not drop a second cone.
+4. Press and hold **Hold to drop cone** for half a second. The count goes from 4 to 3. Holding longer does not drop a second cone. With the trailer wired, this spins the Cytron motor.
 5. Press **Emergency stop**. The page says EMERGENCY STOP ACTIVE immediately. Stand is refused until you press **Reset E-stop**.
 
-Press Ctrl+C in the terminal when you want to quit. Without `--mock-dispenser`, the dispenser stays `DISABLED` and cone drops are refused.
+Press Ctrl+C in the terminal when you want to quit.
 
 Check the same path without a browser:
 
@@ -175,10 +173,10 @@ bash scripts/system_check.sh
 
 `input group` and `bluetooth group` should be `YES`. `DualSense gamepad node` should name the controller. A line that only mentions Motion Sensors or Touchpad does not count. Those nodes are not the gamepad.
 
-8. Start practice with the real controller. Spot and the cone motor stay mocked:
+8. Start practice with the real controller:
 
 ```bash
-.venv/bin/python main.py --mock --mock-dispenser
+.venv/bin/python main.py
 ```
 
 Open http://127.0.0.1:8000. The controller card should show the DualSense name, not a mock controller. Stick numbers should move before you enable driving. Then:
@@ -187,10 +185,10 @@ Open http://127.0.0.1:8000. The controller card should show the DualSense name, 
 2. Press **Stand**, then **Enable driving**.
 3. Push the left stick to walk and the right stick to turn. Releasing the sticks stops.
 4. Pull R2. **Boost** should show Held with a percent.
-5. Hold Cross for half a second to drop one cone.
+5. Hold Cross for half a second to drop one cone (physical motor when pins are set).
 6. R1 stands, L1 sits, and Options stops.
 
-Startup still says `Mode: MOCK`. The real gamepad is read on every start. `--mock` selects practice Spot and does not switch back to the fake controller. `controller.mock: false` in `config/config.yaml` is the default.
+The real gamepad is read on every start. **Mock mode** on the page selects practice Spot. `controller.mock: false` in `config/config.yaml` is the default.
 
 The Search paired button on the page only lists controllers Linux already knows. It does not pair a new one.
 
@@ -198,7 +196,7 @@ If the card says the DualSense is present but cannot be read, the user is not in
 
 ## 7. Connect Spot
 
-Do this only after mock Stand, Sit, Stop, and Emergency stop have been practiced. Stay in a clear area with Spot's physical E-stop in reach. Leave the dispenser disabled for this test.
+Do this only after mock Stand, Sit, Stop, and Emergency stop have been practiced. Stay in a clear area with Spot's physical E-stop in reach.
 
 1. While the Jetson still has internet, install the Spot SDK into the same virtual environment:
 
@@ -207,13 +205,13 @@ Do this only after mock Stand, Sit, Stop, and Emergency stop have been practiced
 ```
 
 2. Plug the Jetson's Ethernet port into Spot.
-3. Start the program so it will use the real robot. Keep the dispenser off:
+3. Start the program:
 
 ```bash
 .venv/bin/python main.py
 ```
 
-Leave **Mock mode** unchecked. `--mock` forces practice mode for that run and skips the saved-credential startup.
+Leave **Mock mode** unchecked to use the real robot.
 
 4. Open the page. The username starts as `user2`. Type Spot's IP and password, then press **Connect to Spot**. Check **Remember credentials on this machine** if the next time the program starts should connect, take the lease, and stand. That writes the IP and username to `config/operator.yaml` and the password to `config/operator.secret` on that Jetson. The password is not sent back to the page. This Connect does not stand by itself.
 5. Confirm the battery and posture. Then press **Stand**, **Sit**, and **Stop**. **Sign out** powers the motors off, releases the lease, and returns to the login page. The robot stands again the next time the program starts, if the remembered identity is still there. Driving stays off until **Enable driving**.
@@ -226,23 +224,28 @@ After Stop, or after the controller disconnects, press **Resume** and then **Ena
 
 ## 8. Cone motor
 
-Do not enable the real motor until mock drops, the half-second hold, and Emergency stop have been practiced.
+The trailer uses one motor on channel 1 of a Cytron MDD10A (same wiring as `Desktop/TestingMotors`). Channel 2 is unused.
 
-The trailer uses one motor on channel 1 of a Cytron MDD10A. Channel 2 is unused. Direction and PWM pin numbers stay empty until the wiring is finished. The program will not energize the motor while those pins are empty.
+| Signal | BOARD pin | Notes |
+| --- | --- | --- |
+| DIR | 13 | gpiod line 122 |
+| PWM | 32 | Hardware PWM7 (`32e0000.pwm`), not software GPIO PWM |
 
-`Jetson.GPIO` comes with JetPack. This program uses BOARD pin numbers, which are the physical header pin numbers, not the BCM numbers printed on some breakout boards.
-
-When the pins are known, set them in `config/config.yaml`, then set:
+`config/config.yaml` ships with:
 
 ```yaml
 dispenser:
   enabled: true
   mock: false
-  dir_pin: 0
-  pwm_pin: 0
+  dir_pin: 13
+  pwm_pin: 32
+  dir_line: 122
+  motor_pwm_hz: 20000
 ```
 
-Replace the zeros with the real header pins. Limit switches stay off unless both switch pins are installed. If the page says `Jetson.GPIO` is not available, the motor was not energized. On JetPack that library is already installed for the system Python. If the virtual environment cannot import it, create the environment again with access to the system packages:
+Mock mode on the connect page mocks Spot only. With these pins set, **Hold to drop cone** drives the physical motor.
+
+Create the virtual environment with system packages so `gpiod` imports:
 
 ```bash
 deactivate 2>/dev/null || true
@@ -256,6 +259,8 @@ If GPIO permission is denied, add the user to the `gpio` group, then log out and
 ```bash
 sudo usermod -aG gpio "$USER"
 ```
+
+If pin 32 is held as GPIO by another process, release it (or reboot) so hardware PWM can claim the pin. Limit switches stay off unless both switch pins are installed.
 
 The cone count starts at 4. Use minus, plus, or Reset when the trailer is reloaded. The count drops only after a drop finishes. A rejected or timed-out command does not change it.
 
@@ -337,7 +342,7 @@ sudo bash scripts/install_boot.sh
 
 That installs `deploy/spot-cone-controller.service` with this user and this folder, enables it for every boot, and opens http://127.0.0.1:8000 in Chromium when the desktop logs in. Automatic login is already set for this Jetson, so the page comes up after a restart with nobody at the keyboard.
 
-The service waits for Bluetooth, runs the virtualenv Python, and adds the `input` and `bluetooth` groups. It reads the real gamepad on every start. It does not pass `--mock` or `--mock-dispenser`. If an IP, username, and password were remembered, a start connects to the real robot, takes the lease, and stands. Driving stays disabled, and the cone motor stays off unless the dispenser was enabled in `config.yaml`.
+The service waits for Bluetooth, runs the virtualenv Python, and adds the `input`, `bluetooth`, and `gpio` groups. It reads the real gamepad on every start. Mock Spot is only selected from the connect-page checkbox. If an IP, username, and password were remembered, a start connects to the real robot, takes the lease, and stands. Driving stays disabled until **Enable driving**.
 
 To install the service by hand, replace `REPLACE_WITH_JETSON_USERNAME` and `REPLACE_WITH_APP_DIR` in `deploy/spot-cone-controller.service`, then:
 
@@ -418,8 +423,9 @@ The usual causes are a username or path that was not replaced, a virtual environ
 
 | What you see | What to do |
 | --- | --- |
-| `Mode: MOCK` | This is practice mode. Leave **Mock mode** unchecked to use the real robot. Start with `--mock` when this run must not stand a remembered robot. |
-| Dispenser says DISABLED | Start with `--mock-dispenser`, or set `dispenser.enabled: true` for a mock practice. |
+| `Mode: MOCK` | Practice Spot from the connect-page checkbox. Leave **Mock mode** unchecked to use the real robot. |
+| Dispenser says DISABLED | Set `dispenser.enabled: true` (and pins) in `config/config.yaml`, or check **Mock mode** so practice can enable the dispenser. |
+| Dispenser says FAULT / gpiod | Recreate the venv with `--system-site-packages`, confirm DIR pin 13 and PWM pin 32, and that pin 32 is not held as GPIO. |
 | The page does not open | The terminal or the systemd service must still be running `main.py`. On the Jetson use http://127.0.0.1:8000. From the tablet, use the Jetson's `192.168.80` address and port 8000 while the tablet is on Spot's Wi-Fi. |
 | The program is still running after the browser closes | Stop the login service: `systemctl --user stop spot-cone-controller.service`. See [Stop and start the program](#stop-and-start-the-program). |
 | Camera names are listed and the picture stays blank | Set `camera.resize_ratio` to `1.0` and restart `main.py`. This Spot rejects a smaller ratio. |

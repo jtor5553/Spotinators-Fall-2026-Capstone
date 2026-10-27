@@ -1,7 +1,8 @@
 system:
   name: "Spot Cone Placement Controller"
   version: "1.0.0"
-  mock_mode: true
+  # Startup default. The connect-page Mock mode checkbox overrides this for a session.
+  mock_mode: false
   operator_file: "config/operator.yaml"
 
 spot:
@@ -30,7 +31,9 @@ dispenser:
   motor_driver: "cytron_mdd10a"
   dir_pin: null
   pwm_pin: null
+  dir_line: null
   motor_duty_percent: 60
+  motor_pwm_hz: 20000
   motor_timeout_sec: 3.0
   drop_duration_sec: 1.5
   reverse_duration_sec: 0.5

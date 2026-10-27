@@ -15,6 +15,10 @@ def make_controller(tmp_path, dispenser_enabled=True):
     config["controller"]["mock"] = True
     config["dispenser"]["enabled"] = dispenser_enabled
     config["dispenser"]["mock"] = True
+    # Unit tests must not claim the Jetson DIR/PWM lines from config.yaml.
+    config["dispenser"]["dir_pin"] = None
+    config["dispenser"]["pwm_pin"] = None
+    config["dispenser"]["dir_line"] = None
     config["logging"]["to_console"] = False
     config["logging"]["directory"] = str(tmp_path)
     config["_paths"]["operator"] = str(Path(tmp_path) / "operator.yaml")

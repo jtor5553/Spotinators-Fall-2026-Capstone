@@ -75,22 +75,27 @@ def test_routes_exist(tmp_path):
     assert "/api/access" not in paths
 
 
-def test_real_and_gamepad_flags_are_gone():
+def test_cli_mock_flags_are_gone():
     import pytest
 
     from main import apply_args, parse_args
     from core.config import load_config
 
-    args = parse_args(["--mock"])
-    assert args.mock is True
+    args = parse_args([])
+    assert not hasattr(args, "mock")
+    assert not hasattr(args, "mock_dispenser")
     assert not hasattr(args, "real")
     assert not hasattr(args, "gamepad")
     config = load_config()
     config["controller"]["mock"] = False
+    config["system"]["mock_mode"] = False
     apply_args(config, args)
-    assert config["system"]["mock_mode"] is True
-    assert config["_skip_auto_start"] is True
+    assert config["system"]["mock_mode"] is False
     assert config["controller"]["mock"] is False
+    with pytest.raises(SystemExit):
+        parse_args(["--mock"])
+    with pytest.raises(SystemExit):
+        parse_args(["--mock-dispenser"])
     with pytest.raises(SystemExit):
         parse_args(["--real"])
     with pytest.raises(SystemExit):
@@ -108,6 +113,51 @@ def test_manual_connect_does_not_stand(tmp_path):
     refused, message = app.connect_spot("10.0.0.4", "op", "pw", mock=False)
     assert refused is False
     assert "Sign out" in message
+
+
+def test_mock_connect_enables_mock_dispenser_without_pins(tmp_path):
+    from dispenser.mock_motor import MockMotor
+
+    app = make_controller(tmp_path, dispenser_enabled=False)
+    app.config["dispenser"]["mock"] = False
+    app.config["dispenser"]["dir_pin"] = None
+    app.config["dispenser"]["pwm_pin"] = None
+    app._dispenser_baseline_enabled = False
+    app._dispenser_baseline_mock = False
+    app.startup()
+    assert app.dispenser.state.value == "DISABLED"
+    ok, _message = app.connect_spot("10.0.0.4", "op", "pw", mock=True)
+    assert ok is True
+    assert app.dispenser.state.value == "READY"
+    assert app.dispenser.enabled is True
+    assert isinstance(app.dispenser.motor, MockMotor)
+    assert app.config["dispenser"]["enabled"] is True
+    assert app.config["dispenser"]["mock"] is True
+
+
+def test_mock_connect_uses_real_motor_when_pins_set(tmp_path, monkeypatch):
+    from dispenser.dispenser import build_dispenser
+    from dispenser.motor_driver import CytronMDD10A
+
+    monkeypatch.setattr(CytronMDD10A, "initialize", lambda self: None)
+
+    app = make_controller(tmp_path, dispenser_enabled=False)
+    app.config["dispenser"]["mock"] = True
+    app.config["dispenser"]["dir_pin"] = 13
+    app.config["dispenser"]["pwm_pin"] = 32
+    app.config["dispenser"]["dir_line"] = 122
+    app._dispenser_baseline_enabled = False
+    app._dispenser_baseline_mock = True
+    app.dispenser = build_dispenser(app.config, verbose=False)
+    app.startup()
+    ok, _message = app.connect_spot("10.0.0.4", "op", "pw", mock=True)
+    assert ok is True
+    assert app.config["dispenser"]["mock"] is False
+    assert app.config["dispenser"]["enabled"] is True
+    assert isinstance(app.dispenser.motor, CytronMDD10A)
+    assert app.dispenser.motor.dir_pin == 13
+    assert app.dispenser.motor.pwm_pin == 32
+    assert app.dispenser.state.value == "READY"
 
 
 def test_sign_out_releases_the_lease(tmp_path):

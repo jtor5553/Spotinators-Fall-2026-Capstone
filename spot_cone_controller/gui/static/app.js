@@ -77,12 +77,25 @@
     byId("remember").checked = Boolean(
       status.saved_hostname || status.saved_username || status.password_saved
     );
+    byId("mock-mode").checked = status.mode === "MOCK";
+  }
+
+  function mockModeSelected(status) {
+    var box = byId("mock-mode");
+    if (box && !byId("connect-screen").classList.contains("hidden")) {
+      return box.checked;
+    }
+    return status && status.mode === "MOCK";
   }
 
   function renderSpot(status) {
     var spot = status.spot;
-    byId("spot-connection").textContent = spot.connection === "CONNECTED" ? "Connected" : "Not connected";
-    setDot("spot-dot", spot.connection === "CONNECTED");
+    if (mockModeSelected(status)) {
+      byId("spot-connection").textContent = "Spot not connected";
+    } else {
+      byId("spot-connection").textContent =
+        spot.connection === "CONNECTED" ? "Connected" : "Spot not connected";
+    }
     byId("spot-battery").textContent = spot.battery === null || spot.battery === undefined ? "--" : spot.battery + "%";
     byId("spot-posture").textContent = spot.robot_state || "Unknown";
     byId("spot-motors").textContent = motorLine(spot);
@@ -292,6 +305,16 @@
     button.addEventListener("pointercancel", end);
     button.addEventListener("contextmenu", function (event) { event.preventDefault(); });
   }
+
+  byId("mock-mode").addEventListener("change", function () {
+    if (byId("mock-mode").checked) {
+      byId("spot-connection").textContent = "Spot not connected";
+    } else if (latest) {
+      renderSpot(latest);
+    } else {
+      byId("spot-connection").textContent = "Spot not connected";
+    }
+  });
 
   byId("connect-button").addEventListener("click", function () {
     post("/api/connect", {

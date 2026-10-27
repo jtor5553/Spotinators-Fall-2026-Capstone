@@ -21,16 +21,14 @@ Open PowerShell in the repository folder, then run:
 cd spot_cone_controller
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
-.\.venv\Scripts\python main.py --mock --mock-dispenser
+.\.venv\Scripts\python main.py
 ```
 
-`--mock` keeps this run in practice. It does not stand Spot even if a password was remembered. The gamepad is still read.
+There is no `--mock` flag. Mock Spot is selected only with the **Mock mode** checkbox on the connect page.
 
 Leave that window open. In a browser, open:
 
 http://127.0.0.1:8000
-
-The startup text should include `Mode: MOCK` and `Dispenser: READY`. If you start without `--mock-dispenser`, the dispenser stays `DISABLED` and cone drops are refused. That is the safe default.
 
 Then:
 
@@ -70,12 +68,12 @@ The pad has to be in PC mode before the program starts. Android mode and DirectI
 4. Start the program:
 
 ```powershell
-.\.venv\Scripts\python main.py --mock --mock-dispenser
+.\.venv\Scripts\python main.py
 ```
 
 Open http://127.0.0.1:8000. The controller card should say `Xbox 360 Controller`. That name is what Windows XInput reports for this pad. Stick numbers should move when you push the sticks. Pull the right trigger and **Boost** should show Held with a percent.
 
-Startup still says `Mode: MOCK`. The real gamepad is read on every start. `--mock` selects practice Spot and does not switch back to the fake controller.
+Check **Mock mode** on the connect page. The real gamepad is read on every start.
 
 Then:
 
@@ -126,7 +124,7 @@ Leave **Mock mode** checked for practice. Do not point this practice PC at the r
 .\.venv\Scripts\python main.py
 ```
 
-Leave **Mock mode** unchecked, type the IP and password, and press **Connect to Spot**. Check **Remember** if the next time this program starts should connect, take the lease, and stand. Driving stays off until **Enable driving**. Start with `--mock` when a run must stay in practice even though a password is saved.
+Leave **Mock mode** unchecked, type the IP and password, and press **Connect to Spot**. Check **Remember** if the next time this program starts should connect, take the lease, and stand. Driving stays off until **Enable driving**. Check **Mock mode** when a run must stay in practice even though a password is saved.
 
 ## If something looks wrong
 
@@ -134,11 +132,11 @@ Leave **Mock mode** unchecked, type the IP and password, and press **Connect to 
 | --- | --- |
 | `python` is not recognized | Install Python 3 and enable "Add python.exe to PATH", then open a new PowerShell window. |
 | `Mode: MOCK` | This is practice mode. That is what this PC should say. |
-| Dispenser says DISABLED | Start with `--mock-dispenser`. |
+| Dispenser says DISABLED | Check **Mock mode** on connect, or set `dispenser.enabled: true` with `mock: true` in config for Windows practice. |
 | The page does not open | The PowerShell window must still be running `main.py`. Use http://127.0.0.1:8000 on this PC. |
 | evdev is not installed | Expected on Windows. The PG-9083S is read through XInput. Do not install the Jetson requirements file here. |
 | Gamepad not found | Put the PG-9083S in PC mode (hold Home and X) and pair it again in Bluetooth settings, then start the program again. |
-| The controller card stays on the mock controller | `controller.mock` is true in the config. The default is false. `--mock` does not select the fake controller. |
+| The controller card stays on the mock controller | `controller.mock` is true in the config. The default is false. |
 | Sticks move on the card but the robot stays still | Press Stand, then Enable driving. After Stop, press Resume and then Enable driving again. |
 | Boost stays Released | Pull the right trigger. |
 | Emergency stop will not clear | Press Reset E-stop, then Resume, then Enable driving. |

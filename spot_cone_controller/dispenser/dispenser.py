@@ -264,6 +264,8 @@ def build_dispenser(config, verbose=False):
             settings.get("dir_pin"),
             settings.get("pwm_pin"),
             duty_percent=settings.get("motor_duty_percent", 60),
+            frequency=settings.get("motor_pwm_hz", 20000),
+            dir_line=settings.get("dir_line"),
         )
         enabled = True
         immediate = False

@@ -1,9 +1,10 @@
 # Operator settings. Do not put the Spot password in this file.
 # Remember stores it in config/operator.secret, which git ignores.
+# Mock Spot is chosen only with the Mock mode checkbox on the connect page.
 
 system:
   name: "Spot Cone Placement Controller"
-  mock_mode: true
+  mock_mode: false
 
 spot:
   hostname: ""
@@ -14,9 +15,16 @@ controller:
   deadman_trigger: "R2"
 
 dispenser:
-  enabled: false
+  enabled: true
+  mock: false
   cone_capacity: 4
   motor_driver: "cytron_mdd10a"
+  # Orin Nano wiring from TestingMotors: DIR pin 13 (line 122), PWM pin 32.
+  dir_pin: 13
+  pwm_pin: 32
+  dir_line: 122
+  motor_duty_percent: 60
+  motor_pwm_hz: 20000
 
 camera:
   width: 640
