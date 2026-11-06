@@ -38,6 +38,16 @@ def _clamp(value, limit):
     return value
 
 
+def _mobility_params():
+    from bosdyn.client.robot_command import RobotCommandBuilder
+
+    params = RobotCommandBuilder.mobility_params()
+    # Spot has no per-camera switch, so this flag turns off body obstacle
+    # avoidance for every body camera, including the rear camera that sees the wagon.
+    params.obstacle_params.disable_vision_body_obstacle_avoidance = True
+    return params
+
+
 def send_velocity(command_client, forward, lateral, rotation, duration_sec, timesync_endpoint=None):
     """Send one velocity command. The caller must keep refreshing it."""
     import time
@@ -49,6 +59,7 @@ def send_velocity(command_client, forward, lateral, rotation, duration_sec, time
         v_x=forward,
         v_y=lateral,
         v_rot=rotation,
+        params=_mobility_params(),
     )
     lifetime = max(float(duration_sec), COMMAND_LIFETIME_SEC)
     end_time = time.time() + lifetime
@@ -63,7 +74,7 @@ def send_velocity(command_client, forward, lateral, rotation, duration_sec, time
 def stand(command_client, timeout_sec=10):
     from bosdyn.client.robot_command import blocking_stand
 
-    blocking_stand(command_client, timeout_sec=timeout_sec)
+    blocking_stand(command_client, timeout_sec=timeout_sec, params=_mobility_params())
 
 
 def sit(command_client, timeout_sec=10):

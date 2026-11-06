@@ -70,13 +70,14 @@ def test_rejected_drive_command_does_not_estop(tmp_path):
 def test_velocity_command_outlasts_wifi_delay():
     import time
 
+    from bosdyn.api.spot import robot_command_pb2
     from spot.movement import COMMAND_LIFETIME_SEC, send_velocity
 
     seen = {}
 
     class Client:
         def robot_command(self, command, end_time_secs=None, timesync_endpoint=None):
-            del command
+            seen["command"] = command
             seen["end"] = end_time_secs
             seen["sync"] = timesync_endpoint
 
@@ -84,6 +85,44 @@ def test_velocity_command_outlasts_wifi_delay():
     send_velocity(Client(), 0.1, 0.0, 0.0, 0.4, timesync_endpoint="clock")
     assert seen["sync"] == "clock"
     assert seen["end"] >= before + COMMAND_LIFETIME_SEC
+    params = robot_command_pb2.MobilityParams()
+    assert seen["command"].synchronized_command.mobility_command.params.Unpack(params)
+    assert params.obstacle_params.disable_vision_body_obstacle_avoidance is True
+    assert params.obstacle_params.disable_vision_foot_obstacle_avoidance is False
+    assert params.obstacle_params.disable_vision_foot_constraint_avoidance is False
+    assert params.obstacle_params.disable_vision_foot_obstacle_body_assist is False
+    assert params.obstacle_params.disable_vision_negative_obstacles is False
+
+
+def test_stand_keeps_body_obstacle_avoidance_off():
+    from bosdyn.api import basic_command_pb2, robot_command_pb2
+    from bosdyn.api.spot import robot_command_pb2 as spot_command_pb2
+    from spot.movement import stand
+
+    seen = {}
+
+    class Client:
+        def robot_command(self, command, end_time_secs=None, timeout=None):
+            seen["command"] = command
+            return 1
+
+        def robot_command_feedback(self, command_id, timeout=None):
+            response = robot_command_pb2.RobotCommandFeedbackResponse()
+            feedback = response.feedback.synchronized_feedback.mobility_command_feedback
+            feedback.status = basic_command_pb2.RobotCommandFeedbackStatus.STATUS_PROCESSING
+            feedback.stand_feedback.status = (
+                basic_command_pb2.StandCommand.Feedback.STATUS_IS_STANDING
+            )
+            return response
+
+    stand(Client(), timeout_sec=1)
+    params = spot_command_pb2.MobilityParams()
+    assert seen["command"].synchronized_command.mobility_command.params.Unpack(params)
+    assert params.obstacle_params.disable_vision_body_obstacle_avoidance is True
+    assert params.obstacle_params.disable_vision_foot_obstacle_avoidance is False
+    assert params.obstacle_params.disable_vision_foot_constraint_avoidance is False
+    assert params.obstacle_params.disable_vision_foot_obstacle_body_assist is False
+    assert params.obstacle_params.disable_vision_negative_obstacles is False
 
 
 def test_controller_loss_requires_resume(tmp_path):
